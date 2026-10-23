@@ -38,7 +38,7 @@ return '<article class="'+(compact?"story":"card story-card")+'"><div class="sto
  '</div><h3>'+safe(s.title)+'</h3><p>'+safe(description).slice(0,360)+'</p><div class="meta"><span>'+safe(time(s.publishedAt))+'</span><span>Priority '+safe(s.score||"—")+'</span>'+
  (s.relatedSources?.length?'<span>'+s.relatedSources.length+' supporting source(s)</span>':"")+'</div>'+
  '<div class="actions"><a class="btn sm ghost" href="'+safe(href(s.url))+'" target="_blank" rel="noopener noreferrer">↗ Original source</a>'+
- '<button class="btn sm secondary" data-action="create" data-id="'+safe(s.id)+'">✎ '+(d?"Continue draft":"Create draft")+'</button></div></article>';
+ '<button class="btn sm secondary" data-action="create" data-id="'+safe(s.id)+'">✎ '+(d?"Continue draft":"Create draft")+'</button>'+(!d?'<button class="btn sm ghost" data-action="skip" data-id="'+safe(s.id)+'">Skip</button>':'')+'</div></article>';
 }
 const empty=(a,b)=>'<div class="empty"><strong>'+safe(a)+'</strong>'+safe(b)+'</div>';
 const notices=()=>errors.length?'<div class="notice warning"><strong>Source update notes:</strong> '+errors.map(s=>safe(s)).join(" · ")+'</div>':"";
@@ -56,9 +56,9 @@ notices()+
 '<button class="btn secondary" style="width:100%;margin-top:15px" data-page="published">View publishing status →</button></section></div>');
 }
 function pageDiscover(){
-const all=stories().filter(s=>(filter==="all"||filter==="official"&&s.official||filter==="drafted"&&!!draft(s.id)||filter==="undrafted"&&!draft(s.id))&&
+const all=stories().filter(s=>(filter==="skipped"?!!state.seen[s.id]:!state.seen[s.id]&&(filter==="all"||filter==="official"&&s.official||filter==="drafted"&&!!draft(s.id)||filter==="undrafted"&&!draft(s.id)))&&
  (s.title+" "+s.publisher+" "+s.snippet).toLowerCase().includes(query.toLowerCase()));
-const tabs=[["all","All"],["official","Official"],["undrafted","Not drafted"],["drafted","In studio"]];
+const tabs=[["all","All"],["official","Official"],["undrafted","Not drafted"],["drafted","In studio"],["skipped","Skipped"]];
 layout('<div class="hero"><div><h1>Discover & curate</h1><p>Current-day stories, ranked for Indian investor relevance. Every card links to its source.</p></div><button class="btn secondary" data-action="refresh">↻ Fetch latest</button></div>'+notices()+
 '<div class="toolbar"><input class="input search" id="storySearch" type="search" value="'+safe(query)+'" placeholder="Search stories, publishers, keywords"><div class="tabs">'+tabs.map(([k,l])=>'<button data-filter="'+k+'" class="'+(filter===k?"active":"")+'">'+l+'</button>').join("")+'</div></div>'+
 '<div class="feed">'+(all.length?all.map(s=>storyHtml(s)).join(""):empty("No matching sources","Adjust the filters or check source connectivity."))+'</div>'+
@@ -170,6 +170,7 @@ const action=b.dataset.action,id=b.dataset.id||selected,d=draft(id);
 switch(action){
 case "refresh":await fetchNews();break;
 case "create":startDraft(id);break;
+case "skip":state.seen[id]=true;redraw();toast("Story skipped for today.");break;
 case "edit":editFrom(id);break;
 case "generate":await generate();break;
 case "simplify":if(d){if(d.status==="Published")return;const t=d.variants?.[d.variant]||"";d.variants[d.variant]=t.replace(/\s+/g," ").trim();d.status="Draft";d.verified=false;redraw();toast("Whitespace reduced; revise the draft manually.")}break;
@@ -182,7 +183,7 @@ case "changeKey":sessionStorage.removeItem("signaldesk:key");token="";$("#access
 });
 document.addEventListener("input",e=>{
 if(e.target.id==="storySearch"){query=e.target.value;const pos=e.target.selectionStart;render();const n=$("#storySearch");if(n){n.focus();n.setSelectionRange(pos,pos)}}
-if(e.target.id==="draftText"&&selected){const d=draft(selected);if(d.status==="Published")return;d.variants[d.variant]=e.target.value;if(d.status!=="Published")d.status="Draft";d.verified=false;persist();const caret=e.target.selectionStart;render();const n=$("#draftText");n?.focus();n?.setSelectionRange(caret,caret)}
+if(e.target.id==="draftText"&&selected){const d=draft(selected);if(d.status==="Published")return;d.variants[d.variant]=e.target.value;d.status="Draft";d.verified=false;persist();const output=finalText(selected);const preview=document.querySelector(".tweet");if(preview)preview.textContent=output;const count=document.querySelector(".counter");if(count){count.textContent=output.length+" / 280 characters";count.classList.toggle("over",output.length>280)}const check=document.querySelector("#verifiedCheck");if(check)check.checked=false;const ready=document.querySelector('[data-action="ready"]');if(ready)ready.disabled=true}
 });
 document.addEventListener("change",e=>{
 if(e.target.id==="draftSelect"){selected=e.target.value;render()}
