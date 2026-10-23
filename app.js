@@ -50,7 +50,7 @@ notices()+
 (pool.length?pool.map(s=>storyHtml(s,true)).join(""):empty("No fetched stories yet","Use Refresh stories, connect a licensed provider, or add an original link manually in Discover."))+'</section>'+
 '<section class="panel"><div class="panel-head"><h2 class="section-title">Today’s publishing desk</h2>'+badge(c.published+" published","official")+'</div>'+
 '<div class="section-desc">Six is an editorial target, never a reason to publish unverified or repetitive material.</div>'+
-Object.entries(state.drafts).length?Object.entries(state.drafts).map(([id,d])=>{const s=get(id);return s?'<div class="list-row"><div><strong>'+safe(s.title)+'</strong><div class="meta">'+badge(d.status,d.status==="Published"?"official":d.status==="Ready"?"":"neutral")+'</div></div><button class="btn sm" data-action="edit" data-id="'+safe(id)+'">Open</button></div>':''}).join("")+
+(Object.entries(state.drafts).length?Object.entries(state.drafts).map(([id,d])=>{const s=get(id);return s?'<div class="list-row"><div><strong>'+safe(s.title)+'</strong><div class="meta">'+badge(d.status,d.status==="Published"?"official":d.status==="Ready"?"":"neutral")+'</div></div><button class="btn sm" data-action="edit" data-id="'+safe(id)+'">Open</button></div>':''}).join("")+
 '<div class="divider"></div>':'<div class="notice">The manager selects stories for the editorial queue. No AI autoposts and no preset filler content.</div>')+
 '<button class="btn secondary" style="width:100%;margin-top:15px" data-page="published">View publishing status →</button></section></div>');
 }
