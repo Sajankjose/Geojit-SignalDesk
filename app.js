@@ -9,17 +9,18 @@ const time=s=>{try{return new Date(s).toLocaleString("en-IN",{timeZone:"Asia/Kol
 const load=(k,def)=>{try{return JSON.parse(localStorage.getItem(k))??def}catch{return def}};
 for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k?.startsWith("signaldesk:day:")&&k!==dayKey){localStorage.removeItem(k);i--}}
 let state=load(dayKey,{drafts:{},manual:[],settings:{disclosure:""},seen:{}});
-state.drafts ||= {};state.manual ||= [];state.seen ||= {};state.settings ||= {};
+state.drafts ||= {};state.manual ||= [];state.savedStories ||= {};state.seen ||= {};state.settings ||= {};
 let feed=[],errors=[],sourceStatus=[],busy=false,active="today",selected=null,filter="all",query="",token=sessionStorage.getItem("signaldesk:key")||"";
 const persist=()=>localStorage.setItem(dayKey,JSON.stringify(state));
 const toast=s=>{const e=$("#toast");e.textContent=s;e.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display="none",4000)};
-const stories=()=>[...state.manual,...feed].sort((a,b)=>((b.score||0)-(a.score||0))||new Date(b.publishedAt)-new Date(a.publishedAt));
+const stories=()=>[...new Map([...state.manual,...Object.values(state.savedStories),...feed].map(s=>[s.id,s])).values()].sort((a,b)=>((b.score||0)-(a.score||0))||new Date(b.publishedAt)-new Date(a.publishedAt));
 const get=id=>stories().find(s=>s.id===id);
 const selectedStory=()=>get(selected);
 const draft=id=>state.drafts[id]||null;
 const status=id=>draft(id)?.status||"New";
 const finalText=id=>{
   const s=get(id),d=draft(id);if(!s||!d)return"";
+  if(d.status==="Published"&&d.publishedText)return d.publishedText;
   const prefix=(state.settings.disclosure||"").trim(),body=(d.variants?.[d.variant]||"").trim();
   const attribution="Source: "+s.publisher+(d.sourceLink?" "+s.url:"");
   return [prefix,body,attribution].filter(Boolean).join("\n\n");
@@ -70,7 +71,7 @@ layout('<div class="hero"><div><h1>Discover & curate</h1><p>Current-day stories,
 }
 function startDraft(id){
 const s=get(id);if(!s)return;
-if(!state.drafts[id])state.drafts[id]={status:"Draft",verified:false,variant:"news",variants:{news:s.title,insight:""},sourceLink:false,xUrl:"",hashtags:[],risks:[]};
+state.savedStories[id]=s;if(!state.drafts[id])state.drafts[id]={status:"Draft",verified:false,variant:"news",variants:{news:s.title,insight:""},sourceLink:false,xUrl:"",hashtags:[],risks:[]};
 selected=id;persist();active="studio";render();toast("Headline starter loaded. Verify source and use AI to draft in Geojit voice.");
 }
 function pageStudio(){
@@ -83,13 +84,13 @@ const line=(s.relatedSources||[]).filter(x=>x.url&&x.publisher).map(x=>'<a href=
 layout('<div class="hero"><div><h1>Content Studio</h1><p>Keep source facts separate from interpretation. Verify before marking ready.</p></div>'+
 '<select id="draftSelect" aria-label="Choose draft">'+ids.map(id=>'<option value="'+safe(id)+'" '+(selected===id?"selected":"")+'>'+safe(get(id).title.slice(0,50))+'</option>').join("")+'</select></div>'+
 '<div class="studio-grid"><section class="panel"><div class="panel-head"><h2 class="section-title">Write in Geojit’s voice</h2>'+badge(d.status,d.status==="Published"?"official":"")+'</div>'+
-'<div class="field"><label class="label">Writing angle</label><div class="tabs"><button data-variant="news" class="'+(d.variant==="news"?"active":"")+'">News update</button><button data-variant="insight" class="'+(d.variant==="insight"?"active":"")+'">Investor insight</button></div></div>'+
-'<div class="field"><label class="label">Editable post text (excluding disclosure and source line)</label><textarea id="draftText" rows="7" placeholder="Generate a brand-aligned version or write a factual post manually">'+safe(d.variants?.[d.variant]||"")+'</textarea></div>'+
-'<div class="actions"><button class="btn primary" id="generateBtn" data-action="generate" '+(busy?"disabled":"")+'>'+ (busy?"Generating…":"✦ Generate Geojit-tone drafts")+'</button><button class="btn secondary" data-action="simplify">Make concise</button></div>'+
+'<div class="field"><label class="label">Writing angle</label><div class="tabs"><button data-variant="news" '+(d.status==="Published"?"disabled":"")+' class="'+(d.variant==="news"?"active":"")+'">News update</button><button data-variant="insight" '+(d.status==="Published"?"disabled":"")+' class="'+(d.variant==="insight"?"active":"")+'">Investor insight</button></div></div>'+
+'<div class="field"><label class="label">Editable post text (excluding disclosure and source line)</label><textarea id="draftText" rows="7" '+(d.status==="Published"?"disabled":"")+' placeholder="Generate a brand-aligned version or write a factual post manually">'+safe(d.variants?.[d.variant]||"")+'</textarea></div>'+
+'<div class="actions"><button class="btn primary" id="generateBtn" data-action="generate" '+(busy||d.status==="Published"?"disabled":"")+'>'+ (busy?"Generating…":"✦ Generate Geojit-tone drafts")+'</button><button class="btn secondary" data-action="simplify" '+(d.status==="Published"?"disabled":"")+'>Make concise</button></div>'+
 (d.risks?.length?'<div class="notice warning"><b>AI/editorial cautions</b><br>'+d.risks.map(safe).join("<br>")+'</div>':"")+
 '<div class="divider"></div><div class="field"><label class="label">X post preview · Disclosure + text + source attribution</label><div class="compose-preview"><div class="user-row"><span class="user-icon">G</span><span><b>Geojit</b><br><span class="muted tiny">Draft · Nothing is published from here</span></span></div><div class="tweet">'+safe(output||"Start your draft")+'</div></div><div class="counter '+(over?"over":"")+'">'+output.length+' / 280 characters</div></div>'+
-'<label class="checkline"><input id="addSourceLink" type="checkbox" '+(d.sourceLink?"checked":"")+'> Include original article link in the post (uses characters)</label>'+
-'<div class="divider"></div><label class="checkline"><input type="checkbox" id="verifiedCheck" '+(d.verified?"checked":"")+'> I opened the original source and verified the date, numbers, meaning, disclosure and final wording. I accept responsibility for publishing.</label>'+
+'<label class="checkline"><input id="addSourceLink" type="checkbox" '+(d.status==="Published"?"disabled ":"")+(d.sourceLink?"checked":"")+'> Include original article link in the post (uses characters)</label>'+
+'<div class="divider"></div><label class="checkline"><input type="checkbox" id="verifiedCheck" '+(d.status==="Published"?"disabled ":"")+(d.verified?"checked":"")+'> I opened the original source and verified the date, numbers, meaning, disclosure and final wording. I accept responsibility for publishing.</label>'+
 (!state.settings.disclosure?.trim()?'<div class="notice warning">Approved SEBI disclosure prefix is missing. Add it in Settings before preparing a final post.</div>':"")+
 '<div class="actions"><button class="btn primary" data-action="ready" '+(invalid?"disabled":"")+'>✓ Mark as ready</button><button class="btn secondary" data-action="copy" '+(d.status!=="Ready"&&d.status!=="Published"?"disabled":"")+'>Copy post</button><button class="btn secondary" data-action="openX" '+(d.status!=="Ready"&&d.status!=="Published"?"disabled":"")+'>↗ Open X</button></div>'+
 '<p class="section-desc">Publishing happens manually on X. Return to Published to record the link. Edits after Ready automatically revert to Draft.</p></section>'+
@@ -164,29 +165,29 @@ document.addEventListener("click",async e=>{
 const b=e.target.closest("button");if(!b)return;
 if(b.dataset.page){active=b.dataset.page;render();return}
 if(b.dataset.filter){filter=b.dataset.filter;render();return}
-if(b.dataset.variant&&selected){const d=draft(selected);d.variant=b.dataset.variant;redraw();return}
+if(b.dataset.variant&&selected){const d=draft(selected);if(d.status==="Published")return;d.variant=b.dataset.variant;redraw();return}
 const action=b.dataset.action,id=b.dataset.id||selected,d=draft(id);
 switch(action){
 case "refresh":await fetchNews();break;
 case "create":startDraft(id);break;
 case "edit":editFrom(id);break;
 case "generate":await generate();break;
-case "simplify":if(d){const t=d.variants?.[d.variant]||"";d.variants[d.variant]=t.replace(/\s+/g," ").trim();d.status="Draft";d.verified=false;redraw();toast("Whitespace reduced; revise the draft manually.")}break;
+case "simplify":if(d){if(d.status==="Published")return;const t=d.variants?.[d.variant]||"";d.variants[d.variant]=t.replace(/\s+/g," ").trim();d.status="Draft";d.verified=false;redraw();toast("Whitespace reduced; revise the draft manually.")}break;
 case "ready":if(d){if(!d.verified||!state.settings.disclosure?.trim()||finalText(id).length>280){toast("Check source, regulatory prefix and 280-character limit.");break}d.status="Ready";redraw();toast("Ready for the manager to post manually in X.")}break;
 case "copy":if(d&&["Ready","Published"].includes(d.status))await copyText(finalText(id));break;
 case "openX":window.open("https://x.com/compose/post","_blank","noopener,noreferrer");break;
-case "record":if(d&&d.status==="Ready"){const u=prompt("Paste the actual published X post URL (x.com/.../status/123...).");if(!u)return;try{const parsed=new URL(u);if(!["x.com","www.x.com","twitter.com","www.twitter.com"].includes(parsed.hostname)||!/^\/[A-Za-z0-9_]+\/status\/\d+/.test(parsed.pathname))throw Error();d.xUrl=parsed.href;d.status="Published";redraw();toast("Published URL recorded locally.")}catch{toast("Please paste a valid published X status URL.")}}break;
+case "record":if(d&&d.status==="Ready"){const u=prompt("Paste the actual published X post URL (x.com/.../status/123...).");if(!u)return;try{const parsed=new URL(u);if(!["x.com","www.x.com","twitter.com","www.twitter.com"].includes(parsed.hostname)||!/^\/[A-Za-z0-9_]+\/status\/\d+/.test(parsed.pathname))throw Error();d.publishedText=finalText(id);d.xUrl=parsed.href;d.status="Published";redraw();toast("Published URL recorded locally.")}catch{toast("Please paste a valid published X status URL.")}}break;
 case "changeKey":sessionStorage.removeItem("signaldesk:key");token="";$("#accessDialog").showModal();break;
 }
 });
 document.addEventListener("input",e=>{
 if(e.target.id==="storySearch"){query=e.target.value;const pos=e.target.selectionStart;render();const n=$("#storySearch");if(n){n.focus();n.setSelectionRange(pos,pos)}}
-if(e.target.id==="draftText"&&selected){const d=draft(selected);d.variants[d.variant]=e.target.value;if(d.status!=="Published")d.status="Draft";d.verified=false;persist();const caret=e.target.selectionStart;render();const n=$("#draftText");n?.focus();n?.setSelectionRange(caret,caret)}
+if(e.target.id==="draftText"&&selected){const d=draft(selected);if(d.status==="Published")return;d.variants[d.variant]=e.target.value;if(d.status!=="Published")d.status="Draft";d.verified=false;persist();const caret=e.target.selectionStart;render();const n=$("#draftText");n?.focus();n?.setSelectionRange(caret,caret)}
 });
 document.addEventListener("change",e=>{
 if(e.target.id==="draftSelect"){selected=e.target.value;render()}
-if(e.target.id==="verifiedCheck"){const d=draft(selected);d.verified=e.target.checked;if(d.status==="Ready")d.status="Draft";redraw()}
-if(e.target.id==="addSourceLink"){const d=draft(selected);d.sourceLink=e.target.checked;d.verified=false;if(d.status==="Ready")d.status="Draft";redraw()}
+if(e.target.id==="verifiedCheck"){const d=draft(selected);if(d.status==="Published")return;d.verified=e.target.checked;if(d.status==="Ready")d.status="Draft";redraw()}
+if(e.target.id==="addSourceLink"){const d=draft(selected);if(d.status==="Published")return;d.sourceLink=e.target.checked;d.verified=false;if(d.status==="Ready")d.status="Draft";redraw()}
 });
 document.addEventListener("submit",e=>{
 if(e.target.id==="accessForm"){e.preventDefault();token=$("#accessInput").value.trim();sessionStorage.setItem("signaldesk:key",token);$("#accessDialog").close();fetchNews();return}
