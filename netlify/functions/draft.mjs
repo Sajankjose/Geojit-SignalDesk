@@ -1,3 +1,4 @@
+import { allowed, originOK, response } from "./lib/auth.mjs";
 // Source-grounded *drafting*, not automated fact checking. No X connection.
 const format={
  type:"json_schema",name:"geojit_editorial_drafts",strict:true,
@@ -21,14 +22,14 @@ Mark every claim needing manual checks in risks. No invented Geojit research opi
 Respond exclusively in the requested JSON schema.`;
 export default async function handler(request){
 const headers={"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"};
-const expected=process.env.MANAGER_ACCESS_KEY;
-if(!expected)return new Response(JSON.stringify({error:"Manager access key is not configured."}),{status:503,headers});
-if(request.headers.get("x-manager-key")!==expected)return new Response(JSON.stringify({error:"Invalid manager access key"}),{status:401,headers});
+if(!allowed(request))return response({error:"Access denied or manager key missing."},401);
+if(!originOK(request))return response({error:"Origin mismatch."},403);
 if(request.method!=="POST")return new Response(JSON.stringify({error:"POST required"}),{status:405,headers});
 const key=process.env.OPENAI_API_KEY;
-if(!key)return new Response(JSON.stringify({error:"AI drafting is not configured. Add OPENAI_API_KEY in Netlify; manual drafting remains available."}),{status:503,headers});
+if(!key)return response({error:"AI drafting is not configured. Add OPENAI_API_KEY in Netlify; manual drafting remains available."},503);
 let input;
 try{input=await request.json()}catch{return new Response(JSON.stringify({error:"Invalid JSON"}),{status:400,headers})}
+if(Number(request.headers.get("content-length")||0)>3500)return response({error:"Request too large"},413);
 if(!input||typeof input.title!=="string"||!input.title.trim()||typeof input.sourceUrl!=="string"||!/^https:\/\//i.test(input.sourceUrl)||input.title.length>300||String(input.snippet||"").length>1200){
 return new Response(JSON.stringify({error:"Valid, bounded source title and HTTPS URL are required."}),{status:400,headers})}
 const evidence={title:input.title.slice(0,300),excerpt:String(input.snippet||"").slice(0,1000),publisher:String(input.publisher||"Unknown").slice(0,80),publishedAt:String(input.publishedAt||"").slice(0,40),sourceUrl:input.sourceUrl.slice(0,500)};

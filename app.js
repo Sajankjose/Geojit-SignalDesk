@@ -11,7 +11,57 @@ for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k?.startsW
 let state=load(dayKey,{drafts:{},manual:[],settings:{disclosure:""},seen:{}});
 state.drafts ||= {};state.manual ||= [];state.savedStories ||= {};state.seen ||= {};state.settings ||= {};
 let feed=[],errors=[],sourceStatus=[],busy=false,active="today",selected=null,filter="all",query="",token=sessionStorage.getItem("signaldesk:key")||"";
-const persist=()=>localStorage.setItem(dayKey,JSON.stringify(state));
+let serverReady=false,saveTimer=null,saving=false,dirty=false,syncError="";
+const storageURL="/.netlify/functions/workspace";
+function markSync(s){const e=$("#syncIndicator");if(e){e.textContent=s;e.title=s}}
+function localPersist(){localStorage.setItem(dayKey,JSON.stringify(state))}
+function persist(){
+  localPersist();
+  if(!serverReady){markSync("Offline · local only");return}
+  dirty=true;markSync("Saving…");clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{void flushWorkspace()},450);
+}
+async function flushWorkspace(){
+  if(!serverReady)return false;
+  clearTimeout(saveTimer);
+  if(saving){while(saving)await new Promise(resolve=>setTimeout(resolve,40));if(!dirty)return !syncError}
+  saving=true;
+  try{
+    while(dirty){
+      dirty=false;
+      const snapshot=JSON.stringify(state);
+      const res=await fetch(storageURL,{method:"PUT",headers:{"Content-Type":"application/json","x-manager-key":token},body:snapshot,cache:"no-store"});
+      const body=await res.json();
+      if(!res.ok)throw Error(body.error||"Cloud save failed");
+    }
+    syncError="";markSync("Saved in workspace");
+    return true;
+  }catch(e){
+    dirty=true;syncError=String(e.message||e);markSync("Not saved · retry");
+    toast("Workspace sync failed: "+syncError);
+    return false;
+  }finally{saving=false}
+}
+async function initialiseWorkspace(){
+  if(!token)return false;
+  markSync("Connecting…");
+  try{
+    const res=await fetch(storageURL,{headers:{"x-manager-key":token},cache:"no-store"});
+    const data=await res.json();
+    if(res.status===401){sessionStorage.removeItem("signaldesk:key");token="";$("#accessDialog").showModal();throw Error("Invalid manager key")}
+    if(!res.ok)throw Error(data.error||"Workspace unavailable");
+    const previous=state;
+    state=data.state;
+    state.drafts ||= {};state.manual ||= [];state.savedStories ||= {};state.seen ||= {};state.settings ||= {};
+    serverReady=true;syncError="";markSync("Workspace connected");
+    if(!data.persisted&&(Object.keys(previous.drafts||{}).length||(previous.manual||[]).length)){
+      state=previous;state.savedStories ||= {};persist();await flushWorkspace();
+    }else localPersist();
+    render();return true;
+  }catch(e){serverReady=false;syncError=String(e.message||e);markSync("Offline · local only");toast("Unable to load workspace: "+syncError);render();return false}
+}
+async function initialise(){const ok=await initialiseWorkspace();if(ok)await fetchNews()}
+
 const toast=s=>{const e=$("#toast");e.textContent=s;e.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display="none",4000)};
 const stories=()=>[...new Map([...state.manual,...Object.values(state.savedStories),...feed].map(s=>[s.id,s])).values()].sort((a,b)=>((b.score||0)-(a.score||0))||new Date(b.publishedAt)-new Date(a.publishedAt));
 const get=id=>stories().find(s=>s.id===id);
@@ -79,7 +129,7 @@ const ids=Object.keys(state.drafts).filter(id=>!!get(id));
 if(!selected||!get(selected)||!draft(selected))selected=ids[0]||null;
 if(!selected){layout('<div class="hero"><div><h1>Content Studio</h1><p>Turn a sourced story into an investor-friendly post.</p></div></div>'+empty("No draft selected","Choose a story from Discover to start writing.")+'<button class="btn primary" data-page="discover">Discover stories →</button>');return}
 const s=get(selected),d=draft(selected),output=finalText(selected),over=output.length>280;
-const invalid=(!d.verified||!(state.settings.disclosure||"").trim()||!d.variants?.[d.variant]?.trim()||over);
+const invalid=(!serverReady||!d.verified||!(state.settings.disclosure||"").trim()||!d.variants?.[d.variant]?.trim()||over);
 const line=(s.relatedSources||[]).filter(x=>x.url&&x.publisher).map(x=>'<a href="'+safe(href(x.url))+'" target="_blank" rel="noopener">'+safe(x.publisher)+'</a>').join(", ");
 layout('<div class="hero"><div><h1>Content Studio</h1><p>Keep source facts separate from interpretation. Verify before marking ready.</p></div>'+
 '<select id="draftSelect" aria-label="Choose draft">'+ids.map(id=>'<option value="'+safe(id)+'" '+(selected===id?"selected":"")+'>'+safe(get(id).title.slice(0,50))+'</option>').join("")+'</select></div>'+
@@ -92,6 +142,7 @@ layout('<div class="hero"><div><h1>Content Studio</h1><p>Keep source facts separ
 '<label class="checkline"><input id="addSourceLink" type="checkbox" '+(d.status==="Published"?"disabled ":"")+(d.sourceLink?"checked":"")+'> Include original article link in the post (uses characters)</label>'+
 '<div class="divider"></div><label class="checkline"><input type="checkbox" id="verifiedCheck" '+(d.status==="Published"?"disabled ":"")+(d.verified?"checked":"")+'> I opened the original source and verified the date, numbers, meaning, disclosure and final wording. I accept responsibility for publishing.</label>'+
 (!state.settings.disclosure?.trim()?'<div class="notice warning">Approved SEBI disclosure prefix is missing. Add it in Settings before preparing a final post.</div>':"")+
+(!serverReady?'<div class="notice warning">Workspace unavailable. Draft locally, then reconnect before marking Ready.</div>':"")+
 '<div class="actions"><button class="btn primary" data-action="ready" '+(invalid?"disabled":"")+'>✓ Mark as ready</button><button class="btn secondary" data-action="copy" '+(d.status!=="Ready"&&d.status!=="Published"?"disabled":"")+'>Copy post</button><button class="btn secondary" data-action="openX" '+(d.status!=="Ready"&&d.status!=="Published"?"disabled":"")+'>↗ Open X</button></div>'+
 '<p class="section-desc">Publishing happens manually on X. Return to Published to record the link. Edits after Ready automatically revert to Draft.</p></section>'+
 '<section class="panel"><div class="panel-head"><h2 class="section-title">Source evidence</h2>'+badge(s.official?"Official regulator":"Publisher / manual",s.official?"official":"neutral")+'</div><h3>'+safe(s.title)+'</h3>'+
@@ -174,10 +225,10 @@ case "skip":state.seen[id]=true;redraw();toast("Story skipped for today.");break
 case "edit":editFrom(id);break;
 case "generate":await generate();break;
 case "simplify":if(d){if(d.status==="Published")return;const t=d.variants?.[d.variant]||"";d.variants[d.variant]=t.replace(/\s+/g," ").trim();d.status="Draft";d.verified=false;redraw();toast("Whitespace reduced; revise the draft manually.")}break;
-case "ready":if(d){if(!d.verified||!state.settings.disclosure?.trim()||finalText(id).length>280){toast("Check source, regulatory prefix and 280-character limit.");break}d.status="Ready";redraw();toast("Ready for the manager to post manually in X.")}break;
+case "ready":if(d){if(!serverReady||!d.verified||!state.settings.disclosure?.trim()||finalText(id).length>280){toast("Check source, regulatory prefix and 280-character limit.");break}d.status="Ready";redraw();if(await flushWorkspace())toast("Verified and saved. Ready for manual X publishing.");else{d.status="Draft";redraw();toast("Could not save Ready state.")}}break;
 case "copy":if(d&&["Ready","Published"].includes(d.status))await copyText(finalText(id));break;
 case "openX":window.open("https://x.com/compose/post","_blank","noopener,noreferrer");break;
-case "record":if(d&&d.status==="Ready"){const u=prompt("Paste the actual published X post URL (x.com/.../status/123...).");if(!u)return;try{const parsed=new URL(u);if(!["x.com","www.x.com","twitter.com","www.twitter.com"].includes(parsed.hostname)||!/^\/[A-Za-z0-9_]+\/status\/\d+/.test(parsed.pathname))throw Error();d.publishedText=finalText(id);d.xUrl=parsed.href;d.status="Published";redraw();toast("Published URL recorded locally.")}catch{toast("Please paste a valid published X status URL.")}}break;
+case "record":if(d&&d.status==="Ready"){const u=prompt("Paste the actual published X post URL (x.com/.../status/123...).");if(!u)return;try{const parsed=new URL(u);if(!["x.com","www.x.com","twitter.com","www.twitter.com"].includes(parsed.hostname)||!/^\/[A-Za-z0-9_]+\/status\/\d+/.test(parsed.pathname))throw Error();d.publishedText=finalText(id);d.xUrl=parsed.href;d.status="Published";redraw();if(await flushWorkspace())toast("Published URL recorded in workspace.");else toast("Published URL saved locally; workspace sync failed.")}catch{toast("Please paste a valid published X status URL.")}}break;
 case "changeKey":sessionStorage.removeItem("signaldesk:key");token="";$("#accessDialog").showModal();break;
 }
 });
@@ -191,11 +242,11 @@ if(e.target.id==="verifiedCheck"){const d=draft(selected);if(d.status==="Publish
 if(e.target.id==="addSourceLink"){const d=draft(selected);if(d.status==="Published")return;d.sourceLink=e.target.checked;d.verified=false;if(d.status==="Ready")d.status="Draft";redraw()}
 });
 document.addEventListener("submit",e=>{
-if(e.target.id==="accessForm"){e.preventDefault();token=$("#accessInput").value.trim();sessionStorage.setItem("signaldesk:key",token);$("#accessDialog").close();fetchNews();return}
-if(e.target.id==="settingsForm"){e.preventDefault();state.settings.disclosure=$("#disclosureInput").value.trim();for(const d of Object.values(state.drafts)){if(d.status==="Ready"){d.status="Draft";d.verified=false}}redraw();toast("Disclosure stored in this browser for today.");return}
+if(e.target.id==="accessForm"){e.preventDefault();token=$("#accessInput").value.trim();sessionStorage.setItem("signaldesk:key",token);$("#accessDialog").close();void initialise();return}
+if(e.target.id==="settingsForm"){e.preventDefault();state.settings.disclosure=$("#disclosureInput").value.trim();for(const d of Object.values(state.drafts)){if(d.status==="Ready"){d.status="Draft";d.verified=false}}redraw();toast("Disclosure updated; workspace syncing.");return}
 if(e.target.id==="manualForm"){e.preventDefault();const title=$("#mTitle").value.trim(),publisher=$("#mPublisher").value.trim(),url=href($("#mUrl").value.trim()),snippet=$("#mSummary").value.trim();if(url==="#"){toast("Use a valid HTTPS original source URL.");return}
 const story={id:"manual-"+Date.now(),title,publisher,url,snippet,publishedAt:new Date().toISOString(),category:"Manual",score:55,official:false,relatedSources:[]};state.manual.unshift(story);persist();startDraft(story.id);toast("Source added for manager verification.");return}
 });
 $("#refreshBtn").addEventListener("click",fetchNews);
-render();if(token)fetchNews();else $("#accessDialog").showModal();
+render();if(token){void initialise()}else $("#accessDialog").showModal();
 })();
