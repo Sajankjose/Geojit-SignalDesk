@@ -1,7 +1,10 @@
+import { allowed, originOK, response } from "./lib/auth.mjs";
 // SignalDesk server-side collection. Metadata only; no scraping or full article copying.
 // RBI/SEBI public RSS + optional licensed NewsAPI. All output still requires human verification.
 const FEEDS=[
   {name:"RBI",url:"https://rbi.org.in/pressreleases_rss.xml",official:true},
+  {name:"RBI Notifications",url:"https://www.rbi.org.in/notifications_rss.xml",official:true},
+  {name:"PIB",url:"https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=1",official:true},
   {name:"SEBI",url:"https://www.sebi.gov.in/sebirss.xml",official:true}
 ];
 const WHITELIST=["reuters.com","bloomberg.com","business-standard.com","livemint.com","moneycontrol.com","cnbctv18.com","thehindubusinessline.com","economictimes.indiatimes.com"];
@@ -55,9 +58,9 @@ return (j.articles||[]).filter(a=>a.url&&hostAllowed(a.url)&&a.title&&a.publishe
 let cache=null;
 export default async function handler(request){
 const h={"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"};
-const expected=process.env.MANAGER_ACCESS_KEY;
-if(!expected)return new Response(JSON.stringify({error:"MANAGER_ACCESS_KEY has not been configured in Netlify."}),{status:503,headers:h});
-if(request.headers.get("x-manager-key")!==expected)return new Response(JSON.stringify({error:"Invalid manager key"}),{status:401,headers:h});
+if(!allowed(request))return response({error:"Access denied or manager key missing."},401);
+if(!originOK(request))return response({error:"Origin mismatch."},403);
+if(request.method!=="GET")return response({error:"GET required"},405);
 if(cache&&Date.now()-cache.when<10*60*1000)return new Response(JSON.stringify(cache.data),{headers:h});
 const tasks=await Promise.allSettled([...FEEDS.map(async s=>({source:s.name,stories:await xmlFetch(s)})),...(process.env.NEWSAPI_KEY?[licensedNews().then(stories=>({source:"NewsAPI",stories}))]:[])]);
 const sources=[],errors=[],combined=[];
