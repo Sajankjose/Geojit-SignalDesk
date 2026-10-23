@@ -14,7 +14,7 @@ const clean=x=>unescapeXml(String(x||"").replace(/<[^>]*>/g," ").replace(/\s+/g,
 const tag=(s,t)=>{const r=new RegExp("<(?:[\\w-]+:)?"+t+"(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:[\\w-]+:)?"+t+">","i");return r.exec(s)?.[1]||""};
 const link=(chunk)=>{const raw=tag(chunk,"link")||(/<link[^>]*href=["']([^"']+)["']/i.exec(chunk)?.[1]||"");try{const url=new URL(clean(raw));if(url.protocol==="http:")url.protocol="https:";return url.protocol==="https:"?url.href:null}catch{return null}};
 const iso=s=>{const t=Date.parse(s);return Number.isFinite(t)?new Date(t).toISOString():null};
-function parseRSS(xml,source){
+export function parseRSS(xml,source){
 const chunks=[...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/gi),...xml.matchAll(/<entry(?:\s[^>]*)?>([\s\S]*?)<\/entry>/gi)];
 return chunks.slice(0,65).map((m,i)=>{
 const raw=m[1],url=link(raw),publishedAt=iso(clean(tag(raw,"pubDate")||tag(raw,"published")||tag(raw,"updated")||tag(raw,"date")));
