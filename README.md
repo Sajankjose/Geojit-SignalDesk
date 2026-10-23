@@ -36,7 +36,7 @@ Manager opens original source, verifies claims ─> /draft (OpenAI) ─> edits �
 - Publisher RSS feeds (e.g. Mint/ET) may disallow commercial use; they are deliberately not scraped here.
 - RSS and NewsAPI only provide headlines/excerpts. The AI cannot infer a checked full story from these. Direct quotes, prices, performance and recommendations need confirmed primary evidence.
 - `localStorage` is one-browser pilot state, not a database or compliance archive. Clearing site data or using another device loses edits/status. Before production, add authenticated server-side state and approved retention policies. Even without historic market data, financial communication records may need retention.
-- The Geojit website Figma design system is used as a **visual reference**. CSS tokens are practical approximations pending approved exact token export (no Figma changes).
+- The Geojit website Figma design system is used as a **visual reference**. Brand primary green (#09877B), deep green (#004C44), orange accent (#FF7E4D), and Manrope typography were checked against the Figma Colors page. Other component-level tokens remain an implementation reference pending full audit (no Figma changes).
 - No connection is made to X. The manager copies the completed post, publishes in X separately, then records its URL.
 - Test feed availability and vendor entitlements in your environment; individual sources can change or block server requests.
 
