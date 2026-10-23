@@ -11,7 +11,7 @@ export function workspaceStore(){
 const blank=()=>({drafts:{},manual:[],savedStories:{},settings:{disclosure:""},seen:{}});
 const isObj=o=>o!==null&&typeof o==="object"&&!Array.isArray(o);
 const validText=(s,max=3000)=>typeof s==="string"&&s.length<=max;
-function checkPayload(input){
+export function checkPayload(input){
   if(!isObj(input)||!isObj(input.drafts)||!Array.isArray(input.manual)||!isObj(input.savedStories)||!isObj(input.settings)||!isObj(input.seen))return false;
   if(Object.keys(input.drafts).length>80||input.manual.length>80||Object.keys(input.savedStories).length>120||Object.keys(input.seen).length>180)return false;
   if(!validText(input.settings.disclosure??"",300))return false;
