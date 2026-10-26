@@ -1,9 +1,9 @@
 name: SignalDesk checks
 on:
   push:
-    branches: [main, production-readiness]
+    branches: [main, production-readiness, official-feeds-poc]
   pull_request:
-    branches: [main]
+    branches: [main, production-readiness]
 permissions:
   contents: read
 jobs:
