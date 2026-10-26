@@ -10,13 +10,24 @@ const unescapeXml=x=>String(x||"").replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,"$1").r
 const clean=x=>unescapeXml(String(x||"")).replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim();
 const tag=(s,t)=>{const r=new RegExp("<(?:[\\w-]+:)?"+t+"(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:[\\w-]+:)?"+t+">","i");return r.exec(s)?.[1]||""};
 const link=(chunk)=>{const raw=tag(chunk,"link")||(/<link[^>]*href=["']([^"']+)["']/i.exec(chunk)?.[1]||"");try{const url=new URL(clean(raw));if(url.protocol==="http:")url.protocol="https:";return url.protocol==="https:"?url.href:null}catch{return null}};
-const iso=s=>{const t=Date.parse(s);return Number.isFinite(t)?new Date(t).toISOString():null};
+// SEBI emits date-only values such as "23 Oct, 2026 +0530".
+// Keep their actual calendar day; use midnight only for internal sorting.
+const dateOnlyPattern=/^\d{1,2}\s+[A-Za-z]{3,9},?\s+\d{4}\s+[+-]\d{4}$/;
+const iso=s=>{
+  const text=String(s||"").trim();
+  let t=Date.parse(text);
+  if(!Number.isFinite(t)&&dateOnlyPattern.test(text)){
+    const fixed=text.replace(/,\s*/g," ") .replace(/\s+([+-]\d{4})$/," 00:00:00 $1");
+    t=Date.parse(fixed);
+  }
+  return Number.isFinite(t)?new Date(t).toISOString():null;
+};
 export function parseRSS(xml,source){
 const chunks=[...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/gi),...xml.matchAll(/<entry(?:\s[^>]*)?>([\s\S]*?)<\/entry>/gi)];
 return chunks.slice(0,65).map((m,i)=>{
-const raw=m[1],url=link(raw),publishedAt=iso(clean(tag(raw,"pubDate")||tag(raw,"published")||tag(raw,"updated")||tag(raw,"date")));
+const raw=m[1],url=link(raw),rawDate=clean(tag(raw,"pubDate")||tag(raw,"published")||tag(raw,"updated")||tag(raw,"date")),publishedAt=iso(rawDate),dateOnly=dateOnlyPattern.test(rawDate);
 if(!url||!publishedAt)return null;
-return {id:source.name.toLowerCase()+"-"+hash(url),publisher:source.name,title:clean(tag(raw,"title")).slice(0,240),snippet:clean(tag(raw,"description")||tag(raw,"summary")).slice(0,420),url,publishedAt,official:true,category:"Regulatory",relatedSources:[],feed:source.name};
+return {id:source.name.toLowerCase()+"-"+hash(url),publisher:source.name,title:clean(tag(raw,"title")).slice(0,240),snippet:clean(tag(raw,"description")||tag(raw,"summary")).slice(0,420),url,publishedAt,dateOnly,official:true,category:"Regulatory",relatedSources:[],feed:source.name};
 }).filter(Boolean)
 }
 function hash(s){let h=2166136261;for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),16777619);return(h>>>0).toString(36)}
