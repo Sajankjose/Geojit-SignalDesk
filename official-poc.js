@@ -30,6 +30,8 @@ function navigate(view,updateHash=true){
  if(active==="studio")renderStudio();
  if(active==="published")renderPublished();
  if(updateHash)history.replaceState(null,"","#"+active);
+ const headings={discover:"Discover",studio:"Content Studio",published:"Published"};
+ $("topbarTitle").textContent=headings[active];
  window.scrollTo({top:0,behavior:"auto"});
 }
 function renderHealth(){
@@ -55,12 +57,12 @@ function renderStories(){
  for(const s of shown){
   const item=el("article","news-card"),top=el("div","card-top");
   const existing=workspace.drafts[s.id];
-  append(top,el("span","pill",s.publisher),el("span","pill secondary",s.category||"Official update"),el("span","pill secondary","Source-backed · unverified"));
+  append(top,el("span","pill",s.publisher),el("span","pill secondary",s.category||"Official update"));
   if(existing)top.append(el("span","pill "+(existing.status==="Published"?"":"secondary"),existing.status));
   const title=el("h3","card-title",s.title),summary=el("p","story-summary",s.snippet||"Open the official source for the full statement.");
   const meta=el("div","story-meta");
-  append(meta,el("span","",dateFmt(s.publishedAt,false,s.dateOnly)),el("span","","Editorial priority "+(s.priority||"—")));
-  const actions=el("div","story-buttons"),link=el("a","outline","Open original ↗"),btn=el("button","outline dark",existing?"Continue in Studio →":"Create draft →");
+  append(meta,el("span","",dateFmt(s.publishedAt,false,s.dateOnly)));
+  const actions=el("div","story-buttons"),link=el("a","outline","Source ↗"),btn=el("button","outline dark",existing?"Continue draft →":"Create post →");
   link.href=validUrl(s.url)||"#";link.target="_blank";link.rel="noopener noreferrer";
   btn.type="button";btn.addEventListener("click",()=>startDraft(s));
   append(actions,link,btn);append(item,top,title,summary,meta,actions);list.append(item);
@@ -115,7 +117,8 @@ function updatePreview(){
  const d=current();if(!d)return;
  const text=buildText(d),length=text.length;
  $("studioPreview").textContent=text||"Start writing your post";
- $("studioCount").textContent=length+" / 280 estimated characters (links may be weighted differently)";
+ $("studioCount").textContent=length+" / 280 characters";
+ $("publishDetails").open=d.status==="Ready"||d.status==="Published";
  $("studioCount").classList.toggle("over-limit",length>280);
  $("draftStatus").textContent=d.status;
  $("sourceVerified").checked=!!d.verified;
@@ -169,7 +172,7 @@ function renderPublished(){
 }
 async function generate(){
  const d=current();if(!d||generating||d.status==="Published")return;
- if(!managerKey){notify("AI is optional. Enter the existing manager access key in ‘AI drafting setup’, and configure server-side keys in Netlify. You can continue drafting manually.",true);return}
+ if(!managerKey){$("aiSetupPanel").open=true;notify("Connect your manager key to generate two real AI versions. The OpenAI API key must be configured securely in Netlify.",true);$("managerKey").focus();return}
  generating=true;$("aiGenerate").disabled=true;$("aiGenerate").textContent="Generating…";
  try{
   const result=await fetch("/.netlify/functions/draft",{method:"POST",headers:{"Content-Type":"application/json","x-manager-key":managerKey},body:JSON.stringify({title:d.source.title,snippet:d.source.snippet,publisher:d.source.publisher,publishedAt:d.source.publishedAt,sourceUrl:d.source.url})});
@@ -178,10 +181,11 @@ async function generate(){
   if(typeof body.news!=="string"||typeof body.insight!=="string")throw Error("Unexpected drafting response");
   d.variants={news:body.news,insight:body.insight};d.variant="news";
   d.risks=Array.isArray(body.risks)?body.risks.slice(0,10).map(String):[];
-  markEdited(d);notify("AI variants generated. Validate every claim using the original source before marking ready.");
+  markEdited(d);notify("Two AI drafts ready. Choose a version, refine it, and verify the source.");
+  $("aiSetupPanel").open=false;
   renderStudio();
  }catch(e){notify(String(e.message||e)+". Manual drafting remains available.",true)}
- finally{generating=false;$("aiGenerate").disabled=false;$("aiGenerate").textContent="✦ Generate AI variants"}
+ finally{generating=false;$("aiGenerate").disabled=false;$("aiGenerate").textContent="✦ Generate 2 AI versions"}
 }
 function sourceURLAccepted(raw){
  try{const u=new URL(raw);return ["x.com","www.x.com","twitter.com","www.twitter.com"].includes(u.hostname)&&/^\/[a-zA-Z0-9_]+\/status\/\d+\/?$/.test(u.pathname)?u.href:null}catch{return null}
@@ -240,11 +244,21 @@ $("recordPublished").addEventListener("click",()=>{
  d.publishedText=buildText(d);d.xUrl=actual;d.status="Published";d.updatedAt=new Date().toISOString();
  persist();renderStudio();renderPublished();notify("Manual publication recorded in this browser. This is not a compliance archive.");
 });
-$("saveManagerKey").addEventListener("click",()=>{
- managerKey=$("managerKey").value.trim();
- if(managerKey){try{sessionStorage.setItem("signaldesk:manager:key",managerKey)}catch{}notify("Manager key saved for this tab. AI drafting also requires a configured Netlify OpenAI key.")}
- else {try{sessionStorage.removeItem("signaldesk:manager:key")}catch{}notify("Manager key cleared. Manual editing remains available.")}
- $("managerKey").value="";
+$("saveManagerKey").addEventListener("click",async()=>{
+ const candidate=$("managerKey").value.trim();$("managerKey").value="";
+ if(!candidate){managerKey="";try{sessionStorage.removeItem("signaldesk:manager:key")}catch{}notify("No key entered. You can still edit drafts manually.",true);return}
+ $("saveManagerKey").disabled=true;$("saveManagerKey").textContent="Checking connection…";
+ try{
+  const response=await fetch("/.netlify/functions/ai-status",{headers:{"x-manager-key":candidate},cache:"no-store"});
+  const body=await response.json();
+  if(!response.ok)throw Error(body.error||"AI connection unavailable");
+  if(!body.ready)throw Error(body.error||"The OpenAI service is not configured in Netlify yet");
+  managerKey=candidate;
+  try{sessionStorage.setItem("signaldesk:manager:key",managerKey)}catch{}
+  $("aiSetupPanel").open=false;
+  notify("AI is connected. Select Generate 2 AI versions for your selected story.");
+ }catch(e){managerKey="";try{sessionStorage.removeItem("signaldesk:manager:key")}catch{}notify("AI connection: "+String(e.message||e)+". Manual drafting is still available.",true)}
+ finally{$("saveManagerKey").disabled=false;$("saveManagerKey").textContent="Connect AI"}
 });
 $("aiGenerate").addEventListener("click",generate);
 const initialView=location.hash.replace("#","");
