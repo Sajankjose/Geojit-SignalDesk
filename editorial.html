@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#004c44"><meta name="description" content="Geojit SignalDesk — curated market stories to verified X-ready drafts">
+<meta name="robots" content="noindex,nofollow"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"><title>Geojit SignalDesk · Editorial workspace</title><link rel="stylesheet" href="/styles.css"></head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="logo"><span class="logo-mark">G<span class="dot">.</span></span><span><b>SignalDesk</b><small>by Geojit · Internal</small></span></div>
+    <nav id="navigation" aria-label="Workspace">
+      <button data-page="today" class="active"><span class="nav-icon">◫</span>Today</button>
+      <button data-page="discover"><span class="nav-icon">◎</span>Discover</button>
+      <button data-page="studio"><span class="nav-icon">✎</span>Studio</button>
+      <button data-page="published"><span class="nav-icon">✓</span>Published</button>
+      <button data-page="settings"><span class="nav-icon">⚙</span>Settings</button>
+    </nav>
+    <div class="side-bottom"><span class="live-dot"></span> Manager-controlled publishing<br><small>No automated X activity</small></div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="top-title"><span class="eyebrow">MARKET INTELLIGENCE / SOCIAL CONTENT</span><strong id="pageTitle">Today’s desk</strong></div>
+      <div class="top-right"><span class="date" id="todayDate"></span><button class="btn ghost" id="refreshBtn">↻ Refresh stories</button><div class="avatar" title="Social media manager">SM</div></div>
+    </header>
+    <main id="content" aria-live="polite"><section class="loading"><span class="spinner"></span> Loading editorial workspace…</section></main>
+  </div>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+<dialog id="accessDialog"><form method="dialog" id="accessForm"><h2>Open SignalDesk</h2><p>Enter the manager access key configured on Netlify. Your key is held for this browser tab only.</p><label>Manager access key<input id="accessInput" type="password" required autocomplete="off" placeholder="Enter access key"></label><menu><button type="submit" class="btn primary">Unlock workspace</button></menu><p class="muted tiny">Pilot access control. Production deployment must also be private.</p></form></dialog>
+<script src="/app.js" defer></script>
+</body></html>

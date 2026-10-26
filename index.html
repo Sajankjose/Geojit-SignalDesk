@@ -1,29 +1,57 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#004c44"><meta name="description" content="Geojit SignalDesk — curated market stories to verified X-ready drafts">
-<meta name="robots" content="noindex,nofollow"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"><title>Geojit SignalDesk · Editorial workspace</title><link rel="stylesheet" href="/styles.css"></head>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="description" content="Geojit SignalDesk — free RBI and SEBI official-source newsroom POC"><meta name="theme-color" content="#004c44">
+<title>SignalDesk · Official news POC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/official-poc.css"></head>
 <body>
-<div class="shell">
+<div class="app-shell">
   <aside class="sidebar">
-    <div class="logo"><span class="logo-mark">G<span class="dot">.</span></span><span><b>SignalDesk</b><small>by Geojit · Internal</small></span></div>
-    <nav id="navigation" aria-label="Workspace">
-      <button data-page="today" class="active"><span class="nav-icon">◫</span>Today</button>
-      <button data-page="discover"><span class="nav-icon">◎</span>Discover</button>
-      <button data-page="studio"><span class="nav-icon">✎</span>Studio</button>
-      <button data-page="published"><span class="nav-icon">✓</span>Published</button>
-      <button data-page="settings"><span class="nav-icon">⚙</span>Settings</button>
-    </nav>
-    <div class="side-bottom"><span class="live-dot"></span> Manager-controlled publishing<br><small>No automated X activity</small></div>
+    <div class="brand"><span class="brand-mark">G<span>.</span></span><div><strong>SignalDesk</strong><small>by Geojit</small></div></div>
+    <div class="workspace-label">PROOF OF CONCEPT</div>
+    <a class="nav active" href="/"><span class="nav-symbol">◉</span> Official news feed</a>
+    <a class="nav" href="/editorial.html" title="The manager editorial workspace requires a separately configured access key"><span class="nav-symbol">✎</span> Main editorial app</a>
+    <div class="sidebar-foot"><span class="signal"></span> Live official RSS metadata<br><span class="dim">No paid news API · No X posting</span></div>
   </aside>
-  <div class="main">
-    <header class="topbar">
-      <div class="top-title"><span class="eyebrow">MARKET INTELLIGENCE / SOCIAL CONTENT</span><strong id="pageTitle">Today’s desk</strong></div>
-      <div class="top-right"><span class="date" id="todayDate"></span><button class="btn ghost" id="refreshBtn">↻ Refresh stories</button><div class="avatar" title="Social media manager">SM</div></div>
-    </header>
-    <main id="content" aria-live="polite"><section class="loading"><span class="spinner"></span> Loading editorial workspace…</section></main>
-  </div>
+  <main>
+    <header class="topbar"><div><div class="eyebrow">MARKET INTELLIGENCE / DATA VALIDATION</div><strong>Official-source newsroom</strong></div><span class="today-date" id="clock"></span></header>
+    <div class="content">
+      <section class="intro">
+        <div><div class="chip intro-chip">PHASE 01 / FREE DATA POC</div><h1>The stories that matter.<br><em>From the source.</em></h1><p>Live RBI and SEBI updates, organised for an editorial manager. Open and verify the original before creating a public post.</p>
+        <div class="intro-actions"><button id="refresh" class="primary">↻ Refresh official feeds</button><span id="lastFetch" class="small-light">Not connected yet</span></div></div>
+        <div class="intro-art"><span class="orbit o1">RBI</span><span class="orbit o2">SEBI</span><div class="rings"><span class="core">G.</span></div><span class="art-label">Source → Signal → Story</span></div>
+      </section>
+      <div id="error" role="status" aria-live="polite" class="alert" hidden></div>
+      <section class="stats" aria-label="Feed summary">
+        <div class="metric"><span>Available stories</span><strong id="total">—</strong><small>Official RSS only</small></div>
+        <div class="metric"><span>Within 24 hours</span><strong id="todayCount">—</strong><small>Recent releases</small></div>
+        <div class="metric"><span>Sources connected</span><strong id="health">—</strong><small>Out of four feeds</small></div>
+        <div class="metric"><span>Cost of news feeds</span><strong>₹0</strong><small>No paid provider</small></div>
+      </section>
+      <section class="main-grid">
+        <div class="news-area">
+          <div class="section-heading"><div><div class="eyebrow green">EDITORIAL DISCOVERY</div><h2>Official updates</h2><p>Sorted by indicative editorial relevance, then publication time. Nothing is independently fact-checked.</p></div></div>
+          <div class="filters"><div id="sourceTabs" class="tabs" role="group" aria-label="Source"><button data-source="all" class="selected">All</button><button data-source="RBI">RBI</button><button data-source="SEBI">SEBI</button></div><label class="range">Time window <select id="window"><option value="1">Last 24 hours</option><option value="7" selected>Last 7 days</option><option value="30">Last 30 days</option></select></label></div>
+          <input id="search" type="search" placeholder="Search headline or topic..." aria-label="Search official news">
+          <div id="news" class="news-items" aria-live="polite"><div class="skeleton">Connecting to the official feeds…</div></div>
+        </div>
+        <div class="right-rail">
+          <section class="panel"><div class="eyebrow green">SOURCE HEALTH</div><h3>Feed connectivity</h3><div id="sources"><p class="muted">Checking RBI and SEBI sources…</p></div></section>
+          <section class="panel"><div class="eyebrow green">POC WORKFLOW</div><h3>From source to post</h3><ol class="steps"><li><span>1</span><div><b>Discover</b><small>Read actual regulator metadata</small></div></li><li><span>2</span><div><b>Verify</b><small>Open original regulator document</small></div></li><li><span>3</span><div><b>Draft</b><small>Prepare text in local editorial sandbox</small></div></li><li><span>4</span><div><b>Manager publishes</b><small>Manually, outside this app</small></div></li></ol></section>
+          <section class="panel soft"><h3>MarketsMojo</h3><p>Existing Geojit partnership identified. News and research ingestion is <b>not enabled</b> in this POC until permitted use is confirmed.</p><a href="https://www.marketsmojo.com/markets" target="_blank" rel="noopener noreferrer">View provider ↗</a></section>
+        </div>
+      </section>
+      <footer>SignalDesk proof of concept · Real official RSS metadata only · Source timestamps may differ from retrieval time · Not a compliance approval or publishing tool</footer>
+    </div>
+  </main>
 </div>
-<div id="toast" role="status" aria-live="polite"></div>
-<dialog id="accessDialog"><form method="dialog" id="accessForm"><h2>Open SignalDesk</h2><p>Enter the manager access key configured on Netlify. Your key is held for this browser tab only.</p><label>Manager access key<input id="accessInput" type="password" required autocomplete="off" placeholder="Enter access key"></label><menu><button type="submit" class="btn primary">Unlock workspace</button></menu><p class="muted tiny">Pilot access control. Production deployment must also be private.</p></form></dialog>
-<script src="/app.js" defer></script>
+<dialog id="draftDialog" aria-labelledby="draftTitle"><form method="dialog" id="dialogForm"><div class="dialog-top"><div><div class="eyebrow green">MANUAL DRAFT SANDBOX</div><h2 id="draftTitle">Prepare a factual draft</h2></div><button type="button" id="closeDialog" aria-label="Close" class="close">×</button></div>
+<p class="muted" id="chosenSource"></p><a id="original" target="_blank" rel="noopener noreferrer">Read original source ↗</a>
+<label class="draft-label" for="draftBody">Draft text (editable, not AI-generated)</label><textarea id="draftBody" rows="6"></textarea>
+<p class="muted">Only a starting headline and source link are supplied. Verify all facts and mandatory disclosures before using outside this sandbox.</p>
+<div class="dialog-bottom"><span id="charCount"></span><label class="confirm"><input id="verified" type="checkbox"> I have checked the original source</label></div>
+<div class="dialog-actions"><button type="button" id="copy" class="primary" disabled>Copy checked draft</button><button type="button" id="cancel" class="secondary">Close</button></div></form></dialog>
+<script src="/official-poc.js" defer></script>
 </body></html>

@@ -7,11 +7,11 @@ const FEEDS=[
 const WHITELIST=["reuters.com","bloomberg.com","business-standard.com","livemint.com","moneycontrol.com","cnbctv18.com","thehindubusinessline.com","economictimes.indiatimes.com"];
 const KEYWORDS=/\b(rbi|sebi|market|equity|equities|stocks?|nifty|sensex|inflation|interest|monetary|policy|rupee|forex|bond|mutual fund|securities|investment|ipo|earnings|results|bank|fund|gdp|economy|economic|crude|tax|regulat|capital|credit|trading|finance|fiscal|exchange)\b/i;
 const unescapeXml=x=>String(x||"").replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,"$1").replace(/&#(x[\da-f]+|\d+);/gi,(_,n)=>{const v=n.toLowerCase().startsWith("x")?parseInt(n.slice(1),16):+n;return v>0&&v<=0x10ffff?String.fromCodePoint(v):""}).replace(/&amp;/g,"&").replace(/&quot;/g,'"').replace(/&apos;|&#39;/g,"'").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&nbsp;/g," ");
-const clean=x=>unescapeXml(String(x||"").replace(/<[^>]*>/g," ").replace(/\s+/g," ")).replace(/\s+/g," ").trim();
+const clean=x=>unescapeXml(String(x||"")).replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim();
 const tag=(s,t)=>{const r=new RegExp("<(?:[\\w-]+:)?"+t+"(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:[\\w-]+:)?"+t+">","i");return r.exec(s)?.[1]||""};
 const link=(chunk)=>{const raw=tag(chunk,"link")||(/<link[^>]*href=["']([^"']+)["']/i.exec(chunk)?.[1]||"");try{const url=new URL(clean(raw));if(url.protocol==="http:")url.protocol="https:";return url.protocol==="https:"?url.href:null}catch{return null}};
 const iso=s=>{const t=Date.parse(s);return Number.isFinite(t)?new Date(t).toISOString():null};
-function parseRSS(xml,source){
+export function parseRSS(xml,source){
 const chunks=[...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/gi),...xml.matchAll(/<entry(?:\s[^>]*)?>([\s\S]*?)<\/entry>/gi)];
 return chunks.slice(0,65).map((m,i)=>{
 const raw=m[1],url=link(raw),publishedAt=iso(clean(tag(raw,"pubDate")||tag(raw,"published")||tag(raw,"updated")||tag(raw,"date")));
