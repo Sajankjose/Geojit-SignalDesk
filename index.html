@@ -10,16 +10,18 @@
 <div class="app-shell">
   <aside class="sidebar">
     <div class="brand"><span class="brand-mark">G<span>.</span></span><div><strong>SignalDesk</strong><small>by Geojit</small></div></div>
-    <div class="workspace-label">PROOF OF CONCEPT</div>
-    <a class="nav active" href="/"><span class="nav-symbol">◉</span> Official news feed</a>
-    <a class="nav" href="/editorial.html" title="The manager editorial workspace requires a separately configured access key"><span class="nav-symbol">✎</span> Main editorial app</a>
-    <div class="sidebar-foot"><span class="signal"></span> Live official RSS metadata<br><span class="dim">No paid news API · No X posting</span></div>
+    <div class="workspace-label">EDITORIAL WORKSPACE · POC</div>
+    <button type="button" class="nav active" data-view="discover"><span class="nav-symbol">◉</span> Discover news</button>
+    <button type="button" class="nav" data-view="studio"><span class="nav-symbol">✎</span> Content Studio <span class="nav-count" id="draftNavCount">0</span></button>
+    <button type="button" class="nav" data-view="published"><span class="nav-symbol">✓</span> Published <span class="nav-count" id="publishedNavCount">0</span></button>
+    <div class="sidebar-foot"><span class="signal"></span> Live RBI + SEBI feeds<br><span class="dim">One workspace · Manual X publishing</span></div>
   </aside>
   <main>
-    <header class="topbar"><div><div class="eyebrow">MARKET INTELLIGENCE / DATA VALIDATION</div><strong>Official-source newsroom</strong></div><span class="today-date" id="clock"></span></header>
+    <header class="topbar"><div><div class="eyebrow">MARKET INTELLIGENCE / EDITORIAL WORKFLOW</div><strong>SignalDesk newsroom</strong></div><span class="today-date" id="clock"></span></header>
     <div class="content">
+      <section id="discoverView" class="view-screen">
       <section class="intro">
-        <div><div class="chip intro-chip">PHASE 01 / FREE DATA POC</div><h1>The stories that matter.<br><em>From the source.</em></h1><p>Live RBI and SEBI updates, organised for an editorial manager. Open and verify the original before creating a public post.</p>
+        <div><div class="chip intro-chip">PHASE 01 / FREE DATA POC</div><h1>The stories that matter.<br><em>From the source.</em></h1><p>Discover official RBI and SEBI updates, then shape a verified Geojit-style post in the same workspace.</p>
         <div class="intro-actions"><button id="refresh" class="primary">↻ Refresh official feeds</button><span id="lastFetch" class="small-light">Not connected yet</span></div></div>
         <div class="intro-art"><span class="orbit o1">RBI</span><span class="orbit o2">SEBI</span><div class="rings"><span class="core">G.</span></div><span class="art-label">Source → Signal → Story</span></div>
       </section>
@@ -32,7 +34,7 @@
       </section>
       <section class="main-grid">
         <div class="news-area">
-          <div class="section-heading"><div><div class="eyebrow green">EDITORIAL DISCOVERY</div><h2>Official updates</h2><p>Sorted by indicative editorial relevance, then publication time. Nothing is independently fact-checked.</p></div></div>
+          <div class="section-heading"><div><div class="eyebrow green">EDITORIAL DISCOVERY</div><h2>Official updates</h2><p>Choose an update to start a draft. The original source must be checked before any post is used.</p></div></div>
           <div class="filters"><div id="sourceTabs" class="tabs" role="group" aria-label="Source"><button data-source="all" class="selected">All</button><button data-source="RBI">RBI</button><button data-source="SEBI">SEBI</button></div><label class="range">Time window <select id="window"><option value="1">Last 24 hours</option><option value="7" selected>Last 7 days</option><option value="30">Last 30 days</option></select></label></div>
           <input id="search" type="search" placeholder="Search headline or topic..." aria-label="Search official news">
           <div id="news" class="news-items" aria-live="polite"><div class="skeleton">Connecting to the official feeds…</div></div>
@@ -43,15 +45,70 @@
           <section class="panel soft"><h3>MarketsMojo</h3><p>Existing Geojit partnership identified. News and research ingestion is <b>not enabled</b> in this POC until permitted use is confirmed.</p><a href="https://www.marketsmojo.com/markets" target="_blank" rel="noopener noreferrer">View provider ↗</a></section>
         </div>
       </section>
+
+      </section>
+      <section id="studioView" class="view-screen" hidden>
+        <div class="workspace-heading">
+          <div><div class="eyebrow green">STEP 02 / CREATE & REVIEW</div><h1>Content Studio</h1><p>Turn selected official news into a clear, source-backed post. Edit and verify every detail before copying to X.</p></div>
+          <button type="button" class="secondary" data-view="discover">← Back to news</button>
+        </div>
+        <div class="info-strip"><b>Proof of concept</b> Drafts in this unified interface are saved in this browser only. They are not an approved compliance archive or a shared manager workspace. AI drafting is optional and needs server configuration.</div>
+        <div id="studioEmpty" class="empty roomy">Your draft desk is empty. <button type="button" class="outline dark" data-view="discover">Choose a news story →</button></div>
+        <div id="studioEditor" hidden>
+          <div class="draft-selector"><label for="draftSelect">Current story</label><select id="draftSelect"></select><span class="status-chip" id="draftStatus">Draft</span></div>
+          <div class="studio-grid">
+            <div class="editor-area">
+              <section class="panel source-reference">
+                <div class="eyebrow green">ORIGINAL SOURCE</div>
+                <h3 id="studioStoryTitle"></h3>
+                <div id="studioSourceMeta" class="story-meta"></div>
+                <a id="studioSourceLink" target="_blank" rel="noopener noreferrer" class="outline">Open original document ↗</a>
+              </section>
+              <section class="panel">
+                <div class="editor-section-head"><div><div class="eyebrow green">EDIT THE MESSAGE</div><h3>Draft content</h3></div><button type="button" class="outline" id="aiGenerate">✦ Generate AI variants</button></div>
+                <div id="editorMessage" class="small-notice" role="status" aria-live="polite">Manual drafting is available without an API key.</div>
+                <div class="tabs draft-variants" role="group" aria-label="Draft variants">
+                  <button type="button" data-variant="news" class="selected">News update</button><button type="button" data-variant="insight">Investor context</button>
+                </div>
+                <label class="draft-label" for="studioText">Edit your post</label>
+                <textarea id="studioText" rows="7" placeholder="Write a concise fact-based summary. Do not add unverified figures or recommendations."></textarea>
+                <div class="editor-under"><span id="studioCount">0 / 280 (estimate)</span><span>Numbers, links and all claims need review</span></div>
+                <details class="editor-config"><summary>AI drafting setup (optional)</summary><p>Requires the Netlify server to have MANAGER_ACCESS_KEY and OPENAI_API_KEY. Your manager key is held in this browser tab, not saved in the POC draft.</p>
+                  <label for="managerKey">Manager access key</label><input type="password" id="managerKey" autocomplete="off" placeholder="Enter existing manager key"><button type="button" class="outline" id="saveManagerKey">Use this key</button>
+                </details>
+                <div id="draftRisks" class="risk-notice" hidden></div>
+              </section>
+            </div>
+            <div class="editor-rail">
+              <section class="panel">
+                <div class="eyebrow green">STEP 03 / REVIEW</div><h3>Final post preview</h3>
+                <div id="studioPreview" class="tweet-preview"></div>
+                <label class="confirm link-check"><input type="checkbox" id="sourceLinkToggle"> Include source URL in post</label>
+                <label class="draft-label" for="disclosure">Approved disclosure (optional in POC)</label>
+                <textarea id="disclosure" rows="2" placeholder="Use only the disclosure approved by Geojit Compliance"></textarea>
+                <label class="confirm approval-check"><input type="checkbox" id="sourceVerified"> I read the original and verified all claims and required disclosures</label>
+                <div class="review-actions"><button type="button" class="primary" id="markReady">Mark ready</button><button type="button" class="outline" id="copyFinal">Copy final text</button></div>
+                <p class="small-muted">Copying does not publish. A manager must review the final post and publish manually on X.</p>
+              </section>
+              <section class="panel">
+                <div class="eyebrow green">STEP 04 / MANUAL PUBLISHING</div><h3>Record the result</h3>
+                <p class="small-muted">After publishing outside SignalDesk, paste the actual public X post URL to record it in this browser.</p>
+                <a class="outline x-link" href="https://x.com/compose/post" target="_blank" rel="noopener noreferrer">Open X composer ↗</a>
+                <label class="draft-label" for="publishedUrl">Published X post URL</label><input type="url" id="publishedUrl" placeholder="https://x.com/account/status/123...">
+                <button type="button" id="recordPublished" class="outline">Record as published</button>
+                <p id="recordMessage" class="small-muted" role="status"></p>
+              </section>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section id="publishedView" class="view-screen" hidden>
+        <div class="workspace-heading"><div><div class="eyebrow green">STEP 05 / TRACKING</div><h1>Published posts</h1><p>Records of posts manually published on X. This is a local browser POC log—not a compliance archive.</p></div><button type="button" class="secondary" data-view="studio">Go to Content Studio →</button></div>
+        <div id="publishedList" class="published-items"></div>
+      </section>
       <footer>SignalDesk proof of concept · Real official RSS metadata only · Source timestamps may differ from retrieval time · Not a compliance approval or publishing tool</footer>
     </div>
   </main>
 </div>
-<dialog id="draftDialog" aria-labelledby="draftTitle"><form method="dialog" id="dialogForm"><div class="dialog-top"><div><div class="eyebrow green">MANUAL DRAFT SANDBOX</div><h2 id="draftTitle">Prepare a factual draft</h2></div><button type="button" id="closeDialog" aria-label="Close" class="close">×</button></div>
-<p class="muted" id="chosenSource"></p><a id="original" target="_blank" rel="noopener noreferrer">Read original source ↗</a>
-<label class="draft-label" for="draftBody">Draft text (editable, not AI-generated)</label><textarea id="draftBody" rows="6"></textarea>
-<p class="muted">Only a starting headline and source link are supplied. Verify all facts and mandatory disclosures before using outside this sandbox.</p>
-<div class="dialog-bottom"><span id="charCount"></span><label class="confirm"><input id="verified" type="checkbox"> I have checked the original source</label></div>
-<div class="dialog-actions"><button type="button" id="copy" class="primary" disabled>Copy checked draft</button><button type="button" id="cancel" class="secondary">Close</button></div></form></dialog>
 <script src="/official-poc.js" defer></script>
 </body></html>
