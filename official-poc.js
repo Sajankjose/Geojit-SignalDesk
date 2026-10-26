@@ -199,7 +199,7 @@ $("search").addEventListener("input",e=>{search=e.target.value.trim().toLowerCas
 $("draftSelect").addEventListener("change",e=>{selectedId=e.target.value;renderStudio()});
 document.querySelectorAll("[data-variant]").forEach(b=>b.addEventListener("click",()=>{
  const d=current();if(!d||d.status==="Published")return;
- d.variant=b.dataset.variant;d.updatedAt=new Date().toISOString();persist();renderStudio();
+ if(d.variant===b.dataset.variant)return;d.variant=b.dataset.variant;markEdited(d);renderStudio();
 }));
 $("studioText").addEventListener("input",e=>{
  const d=current();if(!d||d.status==="Published")return;
