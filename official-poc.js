@@ -2,7 +2,7 @@
 "use strict";
 const $=id=>document.getElementById(id);
 let payload={stories:[],sources:[],warnings:[]},source="all",windowDays=7,search="",selected=null,loading=false;
-const dateFmt=(v,withYear=false)=>{const d=new Date(v);return Number.isNaN(d.getTime())?"Date unavailable":d.toLocaleString("en-IN",{timeZone:"Asia/Kolkata",day:"2-digit",month:"short",...(withYear?{year:"numeric"}:{}),hour:"2-digit",minute:"2-digit"})+" IST"};
+const dateFmt=(v,withYear=false,dateOnly=false)=>{const d=new Date(v);if(Number.isNaN(d.getTime()))return "Date unavailable";if(dateOnly)return d.toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",day:"2-digit",month:"short",year:"numeric"})+" · date only";return d.toLocaleString("en-IN",{timeZone:"Asia/Kolkata",day:"2-digit",month:"short",...(withYear?{year:"numeric"}:{}),hour:"2-digit",minute:"2-digit"})+" IST"};
 $("clock").textContent=new Date().toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",weekday:"short",day:"numeric",month:"short",year:"numeric"});
 const elt=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e};
 const add=(parent,...children)=>{for(const c of children)parent.append(c);return parent};
@@ -35,7 +35,7 @@ function renderStories(){
     const title=elt("h3","card-title",s.title);
     const summary=elt("p","story-summary",s.snippet||"Open the official source for the complete statement.");
     const meta=elt("div","story-meta");
-    add(meta,elt("span","",dateFmt(s.publishedAt)),elt("span","","Editorial priority "+s.priority));
+    add(meta,elt("span","",dateFmt(s.publishedAt,false,s.dateOnly)),elt("span","","Editorial priority "+s.priority));
     const actions=elt("div","story-buttons");
     const link=elt("a","outline","Open original ↗");link.href=s.url;link.target="_blank";link.rel="noopener noreferrer";
     const draft=elt("button","outline dark","Prepare manual draft");
@@ -70,7 +70,7 @@ function draftValue(s){
 }
 function openDraft(s){
   selected=s;
-  $("chosenSource").textContent=s.publisher+" · "+dateFmt(s.publishedAt,true)+" · "+s.category;
+  $("chosenSource").textContent=s.publisher+" · "+dateFmt(s.publishedAt,true,s.dateOnly)+" · "+s.category;
   $("original").href=s.url;
   $("draftBody").value=draftValue(s);
   $("verified").checked=false;
