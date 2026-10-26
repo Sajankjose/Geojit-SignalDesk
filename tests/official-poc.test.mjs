@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {classify,inWindow,fetchOfficialFeeds,FEED_SOURCES} from "../netlify/functions/official-feed.mjs";
+import {parseRSS} from "../netlify/functions/news.mjs";
 
 test("Official feed sources only contain RBI and SEBI",()=>{
   assert.equal(FEED_SOURCES.length,4);
@@ -42,4 +43,14 @@ test("Official headlines preserve publisher and original link",async()=>{
    assert.match(result.stories[0].url,/rbi\.org\.in/);
    assert.equal(result.demo,true);
  }finally{globalThis.fetch=old}
+});
+
+test("SEBI non-standard date-only XML returns a dated official story",()=>{
+  const rss='<rss><channel><item><title>SEBI review of research analysts requirements</title><link>https://www.sebi.gov.in/legal/circulars/oct-2026/example_105400.html</link><pubDate>23 Oct, 2026 +0530</pubDate><description>Regulatory update</description></item></channel></rss>';
+  const items=parseRSS(rss,{name:"SEBI",official:true});
+  assert.equal(items.length,1);
+  assert.equal(items[0].publisher,"SEBI");
+  assert.equal(items[0].dateOnly,true);
+  assert.equal(items[0].publishedAt,"2026-10-22T18:30:00.000Z");
+  assert.equal(inWindow(items[0].publishedAt,30,Date.UTC(2026,9,26)),true);
 });
