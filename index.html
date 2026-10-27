@@ -102,7 +102,7 @@
         </div>
       </section>
       <section id="studioView" class="view-screen" hidden>
-        <div class="page-lead studio-lead"><div><div class="eyebrow green">CREATE / REVIEW</div><h1>Craft your post</h1><p>Two editorial approaches. One verified source.</p></div>
+        <div class="page-lead studio-lead"><div><div class="eyebrow green">CREATE / REVIEW</div><h1>Craft your post</h1><p>Two ways to tell a story. Every claim needs the original source.</p></div>
           <button type="button" class="secondary" data-view="discover">← News</button>
         </div>
         <div id="studioEmpty" class="empty roomy">Select an RBI or SEBI story to create your first post. <button type="button" class="outline dark" data-view="discover">Browse news →</button></div>
@@ -123,9 +123,12 @@
                 </div>
                 <div id="editorMessage" class="editor-hint" role="status" aria-live="polite">Edit manually or generate AI variants.</div>
                 <div class="tabs draft-variants" role="group" aria-label="Draft variants">
-                  <button type="button" data-variant="news" class="selected">News update</button>
-                  <button type="button" data-variant="insight">Investor context</button>
+                  <button type="button" data-variant="news" class="selected">News Update</button>
+                  <button type="button" data-variant="insight">Why It Matters</button>
                 </div>
+                <p id="variantHint" class="variant-hint">A concise factual summary: who did what.</p>
+                <div class="evidence-strip" role="status"><span class="evidence-icon" aria-hidden="true">◷</span><span id="evidenceBasis">Source material not verified. Read the original.</span></div>
+                <div id="contextNotice" class="context-notice" role="status" hidden></div>
                 <label class="field-label" for="studioText">Edit selected version</label>
                 <textarea id="studioText" rows="7" placeholder="Write a clear, accurate interpretation using only verified source information."></textarea>
                 <div class="hashtags-area"><label class="field-label" for="hashtagsInput">Hashtags <span class="optional-text">(up to 2, editable)</span></label>
