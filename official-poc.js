@@ -180,6 +180,88 @@ function startDraft(s){
  }
  readStory(s.id);selectedId=s.id;navigate("studio");
 }
+
+let composerMode="link",composeBusy=false;
+function composeNotice(message,failed=false){
+ const e=$("composeStatus");e.textContent=message;e.classList.toggle("failed",failed);
+}
+function composerOpen(isOpen){
+ $("composePanel").hidden=!isOpen;$("composeToggle").setAttribute("aria-expanded",String(isOpen));
+ if(isOpen)$("composePanel").scrollIntoView({block:"nearest",behavior:"smooth"});
+}
+function setComposerMode(mode){
+ composerMode=mode==="text"?"text":"link";
+ $("composeLinkFields").hidden=composerMode!=="link";
+ $("composeTextFields").hidden=composerMode!=="text";
+ document.querySelectorAll("button[data-compose-mode]").forEach(b=>b.classList.toggle("selected",b.dataset.composeMode===composerMode));
+}
+async function connectComposerAI(){
+ const candidate=$("composeManagerKey").value.trim();
+ if(!candidate){composeNotice("Enter the manager access key to connect AI.",true);return}
+ $("composeConnect").disabled=true;
+ try{
+  const response=await fetch("/.netlify/functions/ai-status",{headers:{"x-manager-key":candidate},cache:"no-store"});
+  const result=await response.json();
+  if(!response.ok||!result.ready)throw Error(result.error||"AI is not configured in Netlify");
+  managerKey=candidate;
+  try{sessionStorage.setItem("signaldesk:manager:key",managerKey)}catch{}
+  $("composeManagerKey").value="";$("composeCredentials").open=false;
+  composeNotice("AI connected. You can now generate two tweet variants.");
+ }catch(e){composeNotice(String(e.message||e)+". Manual drafting is still available.",true)}
+ finally{$("composeConnect").disabled=false}
+}
+const getHost=url=>{try{return new URL(url).hostname.replace(/^www\./,"")}catch{return "User source"}};
+async function getComposerStory(useAI){
+ const now=new Date().toISOString();
+ if(composerMode==="text"){
+  const content=$("composeText").value.trim();
+  if(content.length<18)throw Error("Paste the news headline and some factual detail first.");
+  const lines=content.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  const title=(lines[0]||"").slice(0,260);
+  const snippet=(lines.slice(1).join(" ")||content).slice(0,3000);
+  const inputURL=$("composeReference").value.trim();
+  const url=inputURL?validUrl(inputURL):"";
+  if(inputURL&&!url)throw Error("The original source URL must use HTTPS.");
+  return {title,snippet,url,publisher:url?getHost(url):"User-provided text",publishedAt:now,dateOnly:true};
+ }
+ const entered=$("composeURL").value.trim();
+ const url=validUrl(entered);
+ if(!url)throw Error("Enter a valid HTTPS news URL.");
+ const fallbackTitle=$("composeHeadline").value.trim().slice(0,260);
+ const fallbackText=$("composeExcerpt").value.trim().slice(0,3000);
+ if(fallbackTitle.length>=12){
+  return {title:fallbackTitle,snippet:fallbackText,url,publisher:getHost(url),publishedAt:now,dateOnly:true};
+ }
+ if(!managerKey)throw Error("Connect AI to retrieve a supported news link, or expand 'If the page can't be read' and paste the headline.");
+ const response=await fetch("/.netlify/functions/news-preview",{method:"POST",headers:{"Content-Type":"application/json","x-manager-key":managerKey},body:JSON.stringify({url}),cache:"no-store"});
+ let result;try{result=await response.json()}catch{throw Error("This publisher did not return a usable preview. Paste the headline and a few facts instead.")}
+ if(!response.ok)throw Error(result.error||"Could not retrieve source preview. Paste the headline instead.");
+ return {title:result.title,snippet:result.snippet||"",url,publisher:result.publisher||getHost(url),publishedAt:now,dateOnly:true};
+}
+async function submitComposer(useAI){
+ if(composeBusy)return;
+ if(useAI&&!managerKey){
+  $("composeCredentials").open=true;
+  composeNotice("Connect your manager access key first. The OpenAI API key stays in Netlify.",true);
+  $("composeManagerKey").focus();return;
+ }
+ composeBusy=true;$("composeGenerate").disabled=true;$("composeManual").disabled=true;
+ composeNotice(useAI?"Reading the source and preparing your draft…":"Creating a manual draft…");
+ try{
+  const src=await getComposerStory(useAI);
+  if(src.title.length<12)throw Error("Please provide a meaningful news headline.");
+  const id="custom:"+Date.now()+":"+Math.random().toString(36).slice(2,9);
+  const timestamp=new Date().toISOString();
+  const news=src.title;
+  workspace.drafts[id]={id,manual:true,source:{id,title:src.title,snippet:src.snippet,url:src.url,publisher:src.publisher,category:"User-submitted news",publishedAt:src.publishedAt,dateOnly:true,suggestedHashtags:[]},
+   variants:{news,insight:""},variant:"news",status:"Draft",verified:false,sourceLink:false,publishedText:"",xUrl:"",risks:[],hashtags:[],suggestedHashtags:[],createdAt:timestamp,updatedAt:timestamp};
+  selectedId=id;persist();composerOpen(false);navigate("studio");
+  if(useAI){await generate()}
+  else notify("Manual draft created. Edit the content or use Generate 2 AI versions. Verify the source before marking Ready.");
+ }catch(e){composeNotice(String(e.message||e),true)}
+ finally{composeBusy=false;$("composeGenerate").disabled=false;$("composeManual").disabled=false}
+}
+
 function markEdited(d){
  if(d.status==="Published")return;
  d.status="Draft";d.verified=false;d.updatedAt=new Date().toISOString();
@@ -189,7 +271,8 @@ function buildText(d){
  if(!d)return"";
  if(d.status==="Published"&&d.publishedText)return d.publishedText;
  const prefix=(workspace.disclosure||"").trim(),body=(d.variants[d.variant]||"").trim();
- const from="Source: "+d.source.publisher+(d.sourceLink?" "+d.source.url:"");
+ const from=d.manual&&!validUrl(d.source.url)?"Source: User-provided text (not verified)":
+ "Source: "+d.source.publisher+(d.sourceLink&&validUrl(d.source.url)?" "+d.source.url:"");
  const uniqueTags=(Array.isArray(d.hashtags)?parseTags(d.hashtags.join(" ")):defaultTags(d.source))
   .filter(tag=>!body.toLowerCase().includes(tag.toLowerCase()));
  return [prefix,body,uniqueTags.join(" "),from].filter(Boolean).join("\n\n");
@@ -203,7 +286,7 @@ function updatePreview(){
  $("studioCount").classList.toggle("over-limit",length>280);
  $("draftStatus").textContent=d.status;
  $("sourceVerified").checked=!!d.verified;
- $("markReady").disabled=d.status==="Published"||!d.verified||!d.variants[d.variant]?.trim()||length>280;
+ $("markReady").disabled=d.status==="Published"||!d.verified||!!(d.manual&&!validUrl(d.source.url))||!d.variants[d.variant]?.trim()||length>280;
  $("markReady").textContent=d.status==="Published"?"Already published":d.status==="Ready"?"Ready ✓":"Mark ready";
  $("copyFinal").disabled=!["Ready","Published"].includes(d.status)||length>280;
  $("recordPublished").disabled=d.status!=="Ready";
@@ -231,6 +314,9 @@ function renderStudio(){
  $("studioStoryTitle").textContent=d.source.title;
  $("studioSourceMeta").textContent=d.source.publisher+" · "+dateFmt(d.source.publishedAt,true,d.source.dateOnly)+" · "+d.source.category;
  $("studioSourceLink").href=validUrl(d.source.url)||"#";
+ $("studioSourceLink").hidden=!validUrl(d.source.url);
+ $("manualSourceEdit").hidden=!d.manual;
+ $("manualSourceURL").value=d.manual?(d.source.url||""):"";
  document.querySelectorAll("[data-variant]").forEach(b=>b.classList.toggle("selected",b.dataset.variant===d.variant));
  $("studioText").value=d.variants[d.variant]||"";
  $("hashtagsInput").value=(d.hashtags||defaultTags(d.source)).join(" ");renderHashtagSuggestions(d);
@@ -258,7 +344,7 @@ async function generate(){
  if(!managerKey){$("aiSetupPanel").open=true;notify("Connect your manager key to generate two real AI versions. The OpenAI API key must be configured securely in Netlify.",true);$("managerKey").focus();return}
  generating=true;$("aiGenerate").disabled=true;$("aiGenerate").textContent="Generating…";
  try{
-  const result=await fetch("/.netlify/functions/draft",{method:"POST",headers:{"Content-Type":"application/json","x-manager-key":managerKey},body:JSON.stringify({title:d.source.title,snippet:d.source.snippet,publisher:d.source.publisher,publishedAt:d.source.publishedAt,sourceUrl:d.source.url})});
+  const result=await fetch("/.netlify/functions/draft",{method:"POST",headers:{"Content-Type":"application/json","x-manager-key":managerKey},body:JSON.stringify({title:d.source.title,snippet:d.source.snippet,publisher:d.source.publisher,publishedAt:d.source.publishedAt,sourceUrl:d.source.url,userPasted:!!d.manual})});
   const body=await result.json();
   if(!result.ok)throw Error(body.error||"AI drafting unavailable");
   if(typeof body.news!=="string"||typeof body.insight!=="string")throw Error("Unexpected drafting response");
@@ -274,6 +360,21 @@ async function generate(){
 function sourceURLAccepted(raw){
  try{const u=new URL(raw);return ["x.com","www.x.com","twitter.com","www.twitter.com"].includes(u.hostname)&&/^\/[a-zA-Z0-9_]+\/status\/\d+\/?$/.test(u.pathname)?u.href:null}catch{return null}
 }
+$("composeToggle").addEventListener("click",()=>composerOpen($("composePanel").hidden));
+$("composeClose").addEventListener("click",()=>composerOpen(false));
+document.querySelectorAll("button[data-compose-mode]").forEach(b=>b.addEventListener("click",()=>setComposerMode(b.dataset.composeMode)));
+$("composeConnect").addEventListener("click",connectComposerAI);
+$("composeGenerate").addEventListener("click",()=>submitComposer(true));
+$("composeManual").addEventListener("click",()=>submitComposer(false));
+$("manualSourceURL").addEventListener("change",e=>{
+ const d=current();if(!d||!d.manual||d.status==="Published")return;
+ const raw=e.target.value.trim(),url=raw?validUrl(raw):"";
+ if(raw&&!url){notify("Please enter a valid HTTPS source URL.",true);return}
+ d.source.url=url;if(url&&d.source.publisher==="User-provided text")d.source.publisher=getHost(url);
+ markEdited(d);renderStudio();
+ notify(url?"Source URL updated. Open it and verify the original before marking Ready.":"Add an original source URL before marking Ready.",!url);
+});
+
 document.addEventListener("click",e=>{
  const b=e.target.closest("button[data-view]");if(b)navigate(b.dataset.view);
 });
@@ -325,7 +426,7 @@ $("sourceVerified").addEventListener("change",e=>{
 $("markReady").addEventListener("click",()=>{
  const d=current();if(!d||d.status==="Published")return;
  const text=buildText(d);
- if(!d.verified||!d.variants[d.variant]?.trim()||!text||text.length>280){notify("Verify the original, finish the draft, and ensure it fits the character limit.",true);return}
+ if(!d.verified||!!(d.manual&&!validUrl(d.source.url))||!d.variants[d.variant]?.trim()||!text||text.length>280){notify("Verify the original, finish the draft, and ensure it fits the character limit.",true);return}
  d.status="Ready";d.updatedAt=new Date().toISOString();persist();updatePreview();
  notify("Draft is marked Ready in this browser. Check Geojit compliance requirements before copying or publishing.");
 });

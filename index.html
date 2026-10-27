@@ -30,8 +30,37 @@
       <section id="discoverView" class="view-screen">
         <div class="page-lead">
           <div><div class="eyebrow green">LIVE OFFICIAL SOURCES</div><h1>Today's signals</h1><p>What matters for investors, from RBI and SEBI.</p></div>
-          <button type="button" id="refresh" class="primary">↻ Refresh news</button>
+          <div class="lead-actions"><button type="button" id="composeToggle" class="compose-launch" aria-expanded="false" aria-controls="composePanel">✦ Create from news</button><button type="button" id="refresh" class="secondary">↻ Refresh</button></div>
         </div>
+        <section id="composePanel" class="compose-panel" hidden aria-label="Create a tweet from your news">
+          <div class="compose-intro"><div><span class="compose-eyebrow">YOUR STORY → GEOJIT POST</span><h2>Create a tweet from a link or text</h2><p>Paste a news link, or copy the relevant facts. SignalDesk prepares two editable AI variants.</p></div><button type="button" id="composeClose" class="compose-close" aria-label="Close creator">×</button></div>
+          <div class="compose-tabs" role="group" aria-label="Input type">
+            <button type="button" data-compose-mode="link" class="selected">🔗 News link</button>
+            <button type="button" data-compose-mode="text">☷ Paste news text</button>
+          </div>
+          <div class="compose-fields">
+            <div id="composeLinkFields">
+              <label for="composeURL">News URL</label>
+              <input id="composeURL" type="url" placeholder="https://www.rbi.org.in/..." autocomplete="url" maxlength="1500">
+              <details class="compose-fallback"><summary>If the page can't be read, add the headline yourself</summary>
+                <label for="composeHeadline">Headline</label><input id="composeHeadline" maxlength="260" placeholder="Paste the news headline">
+                <label for="composeExcerpt">Important facts or brief summary</label><textarea id="composeExcerpt" maxlength="3200" rows="3" placeholder="Optional: the relevant facts from the news"></textarea>
+              </details>
+            </div>
+            <div id="composeTextFields" hidden>
+              <label for="composeText">News text</label>
+              <textarea id="composeText" rows="6" maxlength="3800" placeholder="Paste the headline on the first line, followed by the relevant facts."></textarea>
+              <label for="composeReference">Original source URL <small>(recommended; required to mark Ready)</small></label>
+              <input id="composeReference" type="url" maxlength="1500" placeholder="https://publisher.com/story">
+            </div>
+          </div>
+          <details id="composeCredentials" class="compose-credentials"><summary>AI connection <small>(first time only)</small></summary>
+            <p>The OpenAI key stays in Netlify. Enter only the separate manager access key for this browser tab.</p>
+            <div class="compose-credential-row"><input type="password" id="composeManagerKey" placeholder="Manager access key" autocomplete="off"><button type="button" id="composeConnect" class="outline">Connect</button></div>
+          </details>
+          <div class="compose-footer"><div><button type="button" id="composeGenerate" class="compose-action">✦ Generate tweet variants</button><button type="button" id="composeManual" class="outline">Continue without AI</button></div>
+          <p id="composeStatus" class="compose-status" role="status" aria-live="polite">AI generates drafts—not verified news. Use only material you may process; do not paste client-confidential information.</p></div>
+        </section>
         <div class="signal-bar" aria-label="News feed summary">
           <span><b id="total">—</b> stories</span><span><b id="todayCount">—</b> in 24 hours</span>
           <span class="feed-connected"><span class="signal" aria-hidden="true"></span><b id="health">—</b> sources connected</span>
@@ -85,6 +114,7 @@
                 <div class="section-overline">SOURCE</div><h3 id="studioStoryTitle"></h3>
                 <div id="studioSourceMeta" class="story-meta"></div>
                 <a id="studioSourceLink" target="_blank" rel="noopener noreferrer" class="source-link">Read original ↗</a>
+                <div id="manualSourceEdit" class="manual-source-edit" hidden><label for="manualSourceURL">Verify using an original source URL</label><input id="manualSourceURL" type="url" maxlength="1500" placeholder="https://publisher.com/original-story"><small>Required for a pasted-text draft before marking Ready.</small></div>
               </section>
               <section class="panel editor-panel">
                 <div class="editor-section-head">
