@@ -5,7 +5,76 @@ const el=(name,cls,text)=>{const node=document.createElement(name);if(cls)node.c
 const append=(parent,...nodes)=>{nodes.forEach(n=>parent.append(n));return parent};
 const storeKey="signaldesk:unified:poc:v1";
 const read=()=>{try{const x=JSON.parse(localStorage.getItem(storeKey)||"{}");return x&&typeof x==="object"&&x.drafts&&typeof x.drafts==="object"?x:{drafts:{},disclosure:""}}catch{return {drafts:{},disclosure:""}}};
-let workspace=read(),payload={stories:[],sources:[],warnings:[]},active="discover",source="all",windowDays=7,search="",selectedId=null,loading=false,generating=false;
+let workspace=read(),payload={stories:[],sources:[],warnings:[]},active="discover",source="all",windowDays=7,search="",rankMode="top",selectedId=null,loading=false,generating=false;
+
+// In-page alerts only. They are NOT OS notifications, background checks or push delivery.
+const feedStateKey="signaldesk:official-feed-tracking:v1";
+function loadFeedState(){
+ try{const x=JSON.parse(localStorage.getItem(feedStateKey)||"{}");return {known:Array.isArray(x.known)?x.known:[],unread:Array.isArray(x.unread)?x.unread:[]}}catch{return {known:[],unread:[]}}
+}
+let feedState=loadFeedState(),alertsOpen=false;
+const priorityOf=s=>Math.max(0,Math.min(100,Number(s.priority)||0));
+const important=s=>priorityOf(s)>=77;
+function saveFeedState(){
+ feedState.known=feedState.known.slice(-600);feedState.unread=feedState.unread.slice(-200);
+ try{localStorage.setItem(feedStateKey,JSON.stringify(feedState))}catch{}
+}
+function readStory(id){
+ if(!feedState.unread.includes(id))return;
+ feedState.unread=feedState.unread.filter(x=>x!==id);saveFeedState();updateAlertUI();renderStories();
+}
+function updateAlertUI(){
+ const currentNews=payload.stories||[],ids=new Set(feedState.unread);
+ const recent=currentNews.filter(x=>ids.has(x.id)&&important(x));
+ const count=recent.length;
+ $("alertCount").hidden=count===0;$("alertCount").textContent=count>9?"9+":String(count);
+ $("unreadCount").hidden=ids.size===0;$("unreadCount").textContent=String(ids.size);
+ const panel=$("alertsList");panel.replaceChildren();
+ if(!count)panel.append(el("p","small-muted","You're caught up. New high-priority releases will appear here when detected."));
+ else for(const story of recent.slice(0,8)){
+  const b=el("button","alert-story");b.type="button";
+  append(b,el("span","alert-source",story.publisher+" · "+priorityOf(story)+"/100"),el("strong","",story.title));
+  b.addEventListener("click",()=>{readStory(story.id);setAlertsOpen(false);startDraft(story)});
+  panel.append(b);
+ }
+}
+function setAlertsOpen(open){
+ alertsOpen=open;$("alertsPanel").hidden=!open;$("alertsButton").setAttribute("aria-expanded",String(open));
+ if(open)updateAlertUI();
+}
+function registerFeed(newStories){
+ if(!newStories.length)return;
+ const known=new Set(feedState.known),firstVisit=known.size===0,additions=[];
+ for(const s of newStories){
+  if(!known.has(s.id)){
+   additions.push(s);known.add(s.id);
+   if(!firstVisit&&Date.now()-Date.parse(s.publishedAt)<7*86400000)feedState.unread.push(s.id);
+  }
+ }
+ feedState.known=[...known];
+ saveFeedState();updateAlertUI();
+ const newImportant=additions.filter(x=>!firstVisit&&important(x)&&feedState.unread.includes(x.id));
+ $("feedAlertStatus").hidden=newImportant.length===0;
+ if(newImportant.length)$("feedAlertStatus").textContent=newImportant.length+" important new update"+(newImportant.length===1?"":"s")+" since your last check. Open the alert bell to review.";
+}
+const parseTags=input=>[...new Set(String(input||"").split(/[\s,]+/).map(x=>x.trim()).filter(x=>/^#[a-zA-Z][a-zA-Z0-9_]{1,29}$/.test(x)))].slice(0,2);
+const defaultTags=story=>Array.isArray(story.suggestedHashtags)?parseTags(story.suggestedHashtags.join(" ")):({RBI:["#RBI"],SEBI:["#SEBI"]}[story.publisher]||[]);
+function renderHashtagSuggestions(d){
+ const host=$("hashtagSuggestions");host.replaceChildren();
+ const suggested=defaultTags(d.source);
+ for(const tag of suggested){
+  const b=el("button","tag-chip",(d.hashtags||[]).includes(tag)?"✓ "+tag:"+ "+tag);
+  b.type="button";b.disabled=d.status==="Published";
+  b.addEventListener("click",()=>{
+   if(d.status==="Published")return;
+   const currentTags=Array.isArray(d.hashtags)?d.hashtags:[];
+   d.hashtags=currentTags.includes(tag)?currentTags.filter(x=>x!==tag):parseTags([...currentTags,tag].join(" "));
+   $("hashtagsInput").value=d.hashtags.join(" ");markEdited(d);renderHashtagSuggestions(d);updatePreview();
+  });
+  host.append(b);
+ }
+}
+
 const validUrl=u=>{try{const v=new URL(u);return v.protocol==="https:"?v.href:""}catch{return ""}};
 const safeKey=()=>{try{return sessionStorage.getItem("signaldesk:manager:key")||""}catch{return ""}};
 let managerKey=safeKey();
@@ -48,8 +117,10 @@ function renderHealth(){
 function renderStories(){
  const list=$("news");list.replaceChildren();const now=Date.now();
  const shown=payload.stories.filter(s=>(source==="all"||s.publisher===source)&&
-  ((now-new Date(s.publishedAt).getTime())<=windowDays*86400000)&&
+  (now-new Date(s.publishedAt).getTime()<=windowDays*86400000)&&
+  (rankMode!=="high"||important(s))&&(rankMode!=="unread"||feedState.unread.includes(s.id))&&
   (s.title+" "+s.snippet+" "+s.category).toLowerCase().includes(search));
+ shown.sort((a,b)=>rankMode==="latest"?Date.parse(b.publishedAt)-Date.parse(a.publishedAt):priorityOf(b)-priorityOf(a)||Date.parse(b.publishedAt)-Date.parse(a.publishedAt));
  if(!shown.length){
   const msg=payload.stories.length?"No official updates match these filters. Try 30 days or another source.":"No recent source-backed stories available. Check source health or retry.";
   list.append(el("div","empty",msg));return;
@@ -58,18 +129,25 @@ function renderStories(){
   const item=el("article","news-card"),top=el("div","card-top");
   const existing=workspace.drafts[s.id];
   append(top,el("span","pill",s.publisher),el("span","pill secondary",s.category||"Official update"));
+  const score=el("span","score-label "+(important(s)?"score-high":priorityOf(s)>=60?"score-mid":"score-low"),
+    (important(s)?"High impact · ":"Relevance · ")+priorityOf(s)+"/100");
+  score.title=s.rankBasis||"Editorial relevance estimate, not a fact check";
+  top.append(score);
+  if(feedState.unread.includes(s.id))top.append(el("span","pill new-pill","NEW"));
   if(existing)top.append(el("span","pill "+(existing.status==="Published"?"":"secondary"),existing.status));
   const title=el("h3","card-title",s.title),summary=el("p","story-summary",s.snippet||"Open the official source for the full statement.");
   const meta=el("div","story-meta");
   append(meta,el("span","",dateFmt(s.publishedAt,false,s.dateOnly)));
+  const rationale=el("p","why-relevant",s.reason||"Relevance is a provisional editorial estimate; verify the primary source.");
   const actions=el("div","story-buttons"),link=el("a","outline","Source ↗"),btn=el("button","outline dark",existing?"Continue draft →":"Create post →");
   link.href=validUrl(s.url)||"#";link.target="_blank";link.rel="noopener noreferrer";
   btn.type="button";btn.addEventListener("click",()=>startDraft(s));
-  append(actions,link,btn);append(item,top,title,summary,meta,actions);list.append(item);
+  link.addEventListener("click",()=>readStory(s.id));
+  append(actions,link,btn);append(item,top,title,summary,rationale,meta,actions);list.append(item);
  }
 }
 function renderFeeds(){
- renderHealth();renderStories();
+ renderHealth();renderStories();updateAlertUI();
  const note=$("error"),warnings=payload.warnings||[];
  if(warnings.length){note.textContent="Source note: "+warnings.join(" · ");note.hidden=false}else note.hidden=true;
  $("lastFetch").textContent=payload.fetchedAt?"Updated "+dateFmt(payload.fetchedAt):"Awaiting feed response";
@@ -84,6 +162,7 @@ async function refresh(){
   const data=await response.json();
   if(!response.ok&&!Array.isArray(data.sources))throw Error(data.error||"Feed request failed");
   payload=data;
+  if(Array.isArray(data.stories)&&data.sources?.some(x=>x.ok))registerFeed(data.stories);
  }catch(e){payload={stories:[],sources:[],warnings:["Could not retrieve RSS: "+String(e.message||e)]}}
  finally{loading=false;$("refresh").disabled=false;$("refresh").textContent="↻ Refresh official feeds";renderFeeds()}
 }
@@ -96,10 +175,10 @@ function startDraft(s){
  if(!workspace.drafts[s.id]){
   const ts=new Date().toISOString();
   workspace.drafts[s.id]={id:s.id,source:{id:s.id,title:s.title,snippet:s.snippet||"",url:s.url,publisher:s.publisher,category:s.category||"Official update",publishedAt:s.publishedAt,dateOnly:!!s.dateOnly},
-   variants:{news:starter(s),insight:""},variant:"news",status:"Draft",verified:false,sourceLink:false,publishedText:"",xUrl:"",risks:[],createdAt:ts,updatedAt:ts};
+   variants:{news:starter(s),insight:""},variant:"news",status:"Draft",verified:false,sourceLink:false,publishedText:"",xUrl:"",risks:[],hashtags:defaultTags(s),suggestedHashtags:defaultTags(s),createdAt:ts,updatedAt:ts};
   persist();
  }
- selectedId=s.id;navigate("studio");
+ readStory(s.id);selectedId=s.id;navigate("studio");
 }
 function markEdited(d){
  if(d.status==="Published")return;
@@ -111,7 +190,9 @@ function buildText(d){
  if(d.status==="Published"&&d.publishedText)return d.publishedText;
  const prefix=(workspace.disclosure||"").trim(),body=(d.variants[d.variant]||"").trim();
  const from="Source: "+d.source.publisher+(d.sourceLink?" "+d.source.url:"");
- return [prefix,body,from].filter(Boolean).join("\n\n");
+ const uniqueTags=(Array.isArray(d.hashtags)?parseTags(d.hashtags.join(" ")):defaultTags(d.source))
+  .filter(tag=>!body.toLowerCase().includes(tag.toLowerCase()));
+ return [prefix,body,uniqueTags.join(" "),from].filter(Boolean).join("\n\n");
 }
 function updatePreview(){
  const d=current();if(!d)return;
@@ -129,6 +210,7 @@ function updatePreview(){
  $("publishedUrl").disabled=d.status==="Published";
  $("publishedUrl").value=d.xUrl||"";
  $("studioText").disabled=d.status==="Published";
+ $("hashtagsInput").disabled=d.status==="Published";
  $("sourceLinkToggle").disabled=d.status==="Published";
  $("aiGenerate").disabled=d.status==="Published"||generating;
  $("sourceVerified").disabled=d.status==="Published";
@@ -151,6 +233,7 @@ function renderStudio(){
  $("studioSourceLink").href=validUrl(d.source.url)||"#";
  document.querySelectorAll("[data-variant]").forEach(b=>b.classList.toggle("selected",b.dataset.variant===d.variant));
  $("studioText").value=d.variants[d.variant]||"";
+ $("hashtagsInput").value=(d.hashtags||defaultTags(d.source)).join(" ");renderHashtagSuggestions(d);
  $("sourceLinkToggle").checked=!!d.sourceLink;
  $("disclosure").value=workspace.disclosure||"";
  const risks=$("draftRisks");risks.hidden=!d.risks?.length;risks.textContent=d.risks?.length?"AI draft review notes: "+d.risks.join(" · "):"";
@@ -181,6 +264,7 @@ async function generate(){
   if(typeof body.news!=="string"||typeof body.insight!=="string")throw Error("Unexpected drafting response");
   d.variants={news:body.news,insight:body.insight};d.variant="news";
   d.risks=Array.isArray(body.risks)?body.risks.slice(0,10).map(String):[];
+  d.hashtags=Array.isArray(body.hashtags)&&body.hashtags.length?parseTags(body.hashtags.join(" ")):defaultTags(d.source);
   markEdited(d);notify("Two AI drafts ready. Choose a version, refine it, and verify the source.");
   $("aiSetupPanel").open=false;
   renderStudio();
@@ -194,6 +278,16 @@ document.addEventListener("click",e=>{
  const b=e.target.closest("button[data-view]");if(b)navigate(b.dataset.view);
 });
 $("refresh").addEventListener("click",refresh);
+$("rankingTabs").addEventListener("click",e=>{
+ const b=e.target.closest("button[data-rank]");if(!b)return;
+ rankMode=b.dataset.rank;document.querySelectorAll("button[data-rank]").forEach(x=>x.classList.toggle("selected",x===b));renderStories();
+});
+$("alertsButton").addEventListener("click",()=>setAlertsOpen(!alertsOpen));
+$("alertsClose").addEventListener("click",()=>setAlertsOpen(false));
+$("clearAlerts").addEventListener("click",()=>{
+ feedState.unread=[];saveFeedState();updateAlertUI();setAlertsOpen(false);renderStories();
+});
+document.addEventListener("click",e=>{if(alertsOpen&&!e.target.closest(".alert-anchor"))setAlertsOpen(false)});
 $("sourceTabs").addEventListener("click",e=>{
  const b=e.target.closest("button[data-source]");if(!b)return;
  source=b.dataset.source;document.querySelectorAll("button[data-source]").forEach(x=>x.classList.toggle("selected",x===b));renderStories();
@@ -208,6 +302,10 @@ document.querySelectorAll("[data-variant]").forEach(b=>b.addEventListener("click
 $("studioText").addEventListener("input",e=>{
  const d=current();if(!d||d.status==="Published")return;
  d.variants[d.variant]=e.target.value;markEdited(d);updatePreview();
+});
+$("hashtagsInput").addEventListener("input",e=>{
+ const d=current();if(!d||d.status==="Published")return;
+ d.hashtags=parseTags(e.target.value);markEdited(d);renderHashtagSuggestions(d);updatePreview();
 });
 $("sourceLinkToggle").addEventListener("change",e=>{
  const d=current();if(!d||d.status==="Published")return;
@@ -263,4 +361,5 @@ $("saveManagerKey").addEventListener("click",async()=>{
 $("aiGenerate").addEventListener("click",generate);
 const initialView=location.hash.replace("#","");
 updateNavCounts();navigate(initialView,false);refresh();
+setInterval(()=>{if(!document.hidden)refresh()},5*60*1000);
 })();
