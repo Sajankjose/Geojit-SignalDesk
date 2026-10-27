@@ -319,6 +319,20 @@ function renderStudio(){
  $("manualSourceURL").value=d.manual?(d.source.url||""):"";
  document.querySelectorAll("[data-variant]").forEach(b=>b.classList.toggle("selected",b.dataset.variant===d.variant));
  $("studioText").value=d.variants[d.variant]||"";
+ $("studioText").placeholder=d.variant==="insight"&&d.contextStatus==="needs_source"?
+ "Add verified source details before writing an explanation. Don't invent investor implications.":
+ "Write a clear, standalone update naming the organisation and event.";
+ $("variantHint").textContent=d.variant==="news"?
+ "What happened? Name the organisation, the action and the specific facts.":
+ "Why does this particular news matter? Only explain relevance that the source supports.";
+ const basis=String(d.source.snippet||"").trim();
+ $("evidenceBasis").textContent=d.manual?
+ (basis?"AI input: user-supplied headline and text (unverified). Open the original.":"AI input: user-supplied headline only. Open the original."):
+ (basis?"AI input: official RSS headline and excerpt, not the full release. Verify original.":"AI input: headline only, not the full release. More source detail may be needed.");
+ const note=$("contextNotice");
+ note.hidden=!(d.variant==="insight"&&d.contextStatus==="needs_source");
+ note.textContent=d.contextStatus==="needs_source"?
+ "More evidence needed: "+(d.contextNote||"The available headline/excerpt does not establish a distinct explanation. Read the original and add supported context."):"";
  $("hashtagsInput").value=(d.hashtags||defaultTags(d.source)).join(" ");renderHashtagSuggestions(d);
  $("sourceLinkToggle").checked=!!d.sourceLink;
  $("disclosure").value=workspace.disclosure||"";
@@ -347,11 +361,16 @@ async function generate(){
   const result=await fetch("/.netlify/functions/draft",{method:"POST",headers:{"Content-Type":"application/json","x-manager-key":managerKey},body:JSON.stringify({title:d.source.title,snippet:d.source.snippet,publisher:d.source.publisher,publishedAt:d.source.publishedAt,sourceUrl:d.source.url,userPasted:!!d.manual})});
   const body=await result.json();
   if(!result.ok)throw Error(body.error||"AI drafting unavailable");
-  if(typeof body.news!=="string"||typeof body.insight!=="string")throw Error("Unexpected drafting response");
+  if(typeof body.news!=="string"||!body.news.trim()||typeof body.insight!=="string")throw Error("Unexpected drafting response");
   d.variants={news:body.news,insight:body.insight};d.variant="news";
   d.risks=Array.isArray(body.risks)?body.risks.slice(0,10).map(String):[];
+  d.contextStatus=body.contextStatus==="needs_source"?"needs_source":"supported";
+  d.contextNote=typeof body.contextNote==="string"?body.contextNote.slice(0,300):"";
   d.hashtags=Array.isArray(body.hashtags)&&body.hashtags.length?parseTags(body.hashtags.join(" ")):defaultTags(d.source);
-  markEdited(d);notify("Two AI drafts ready. Choose a version, refine it, and verify the source.");
+  markEdited(d);
+  notify(d.contextStatus==="needs_source"?
+    "News Update is ready to review. Why It Matters needs more verified source detail; no speculative explanation was generated.":
+    "Two AI versions drafted. Check both against the original source before selecting one.");
   $("aiSetupPanel").open=false;
   renderStudio();
  }catch(e){notify(String(e.message||e)+". Manual drafting remains available.",true)}
@@ -402,7 +421,11 @@ document.querySelectorAll("[data-variant]").forEach(b=>b.addEventListener("click
 }));
 $("studioText").addEventListener("input",e=>{
  const d=current();if(!d||d.status==="Published")return;
- d.variants[d.variant]=e.target.value;markEdited(d);updatePreview();
+ d.variants[d.variant]=e.target.value;markEdited(d);
+ if(d.variant==="insight"&&d.contextStatus==="needs_source"){
+   $("contextNotice").textContent="AI could not verify sufficient context. Any explanation you add must be checked against the original release.";
+ }
+ updatePreview();
 });
 $("hashtagsInput").addEventListener("input",e=>{
  const d=current();if(!d||d.status==="Published")return;
