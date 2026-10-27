@@ -19,7 +19,13 @@
     <div class="sidebar-foot"><span class="signal"></span>Official source POC<small>Human-reviewed · Manual X posting</small></div>
   </aside>
   <main class="main">
-    <header class="topbar"><div><div class="eyebrow">GEOJIT / EDITORIAL WORKSPACE</div><strong id="topbarTitle">Discover</strong></div><span class="today-date" id="clock"></span></header>
+    <header class="topbar"><div><div class="eyebrow">GEOJIT / EDITORIAL WORKSPACE</div><strong id="topbarTitle">Discover</strong></div>
+      <div class="top-actions"><span class="today-date" id="clock"></span>
+        <div class="alert-anchor"><button type="button" id="alertsButton" class="alerts-button" aria-label="Important news alerts" aria-expanded="false" aria-controls="alertsPanel"><span aria-hidden="true">🔔</span><span class="alert-badge" id="alertCount" hidden>0</span></button>
+        <section class="alerts-panel" id="alertsPanel" aria-label="Important news alerts" hidden><div class="alerts-heading"><strong>Important updates</strong><button type="button" id="alertsClose" aria-label="Close alerts">×</button></div>
+          <p class="alerts-hint">New high-priority stories since your last check. Alerts work while this page is open, not when closed.</p>
+          <div id="alertsList" class="alerts-list"></div><button type="button" id="clearAlerts" class="alerts-clear">Mark all seen</button></section></div>
+      </div></header>
     <div class="content">
       <section id="discoverView" class="view-screen">
         <div class="page-lead">
@@ -34,6 +40,15 @@
         <div id="error" class="alert" role="status" aria-live="polite" hidden></div>
         <div class="discover-layout">
           <section class="news-area" aria-label="News discovery">
+            <div class="rank-controls">
+              <div id="rankingTabs" class="rank-tabs" role="group" aria-label="Feed ordering">
+                <button type="button" data-rank="top" class="selected">Top stories</button>
+                <button type="button" data-rank="latest">Latest</button>
+                <button type="button" data-rank="high">High priority</button>
+                <button type="button" data-rank="unread">New <span id="unreadCount" class="unread-counter" hidden>0</span></button>
+              </div>
+              <details class="ranking-help"><summary>How ranking works</summary><p>Editorial estimates from topic relevance, recency and routine-release signals. Not a fact check, financial recommendation or personalised feed.</p></details>
+            </div>
             <div class="filter-row">
               <div id="sourceTabs" class="tabs" role="group" aria-label="Select news source">
                 <button type="button" class="selected" data-source="all">All</button>
@@ -42,7 +57,7 @@
               </div>
               <label class="range" for="window">Published <select id="window"><option value="1">24 hours</option><option value="7" selected>7 days</option><option value="30">30 days</option></select></label>
             </div>
-            <input id="search" type="search" placeholder="Search news or topics" aria-label="Search official news">
+            <input id="search" type="search" placeholder="Search news or topics" aria-label="Search official news"><p id="feedAlertStatus" class="feed-alert-status" role="status" aria-live="polite" hidden></p>
             <div id="news" class="news-items" aria-live="polite"><div class="skeleton">Fetching official releases…</div></div>
           </section>
           <aside class="discovery-rail">
@@ -83,6 +98,10 @@
                 </div>
                 <label class="field-label" for="studioText">Edit selected version</label>
                 <textarea id="studioText" rows="7" placeholder="Write a clear, accurate interpretation using only verified source information."></textarea>
+                <div class="hashtags-area"><label class="field-label" for="hashtagsInput">Hashtags <span class="optional-text">(up to 2, editable)</span></label>
+                  <input id="hashtagsInput" type="text" maxlength="80" placeholder="#RBI #MonetaryPolicy">
+                  <div id="hashtagSuggestions" class="hashtag-suggestions"></div>
+                </div>
                 <div class="editor-under"><span id="studioCount">0 / 280</span><span>Approximate X character count</span></div>
                 <details class="editor-config" id="aiSetupPanel">
                   <summary>AI connection settings</summary>

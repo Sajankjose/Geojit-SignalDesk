@@ -1,6 +1,7 @@
 // Read-only RBI/SEBI RSS demonstration. No credentials, licensed news,
 // proprietary MarketsMojo content, AI drafting or X API calls are used here.
 import { parseRSS } from "./news.mjs";
+import {rankOfficialStory,suggestedHashtags} from "./lib/editorial.mjs";
 
 export const FEED_SOURCES=[
   {id:"rbi-press",name:"RBI · Press releases",publisher:"RBI",url:"https://rbi.org.in/pressreleases_rss.xml",fallback:"https://www.rbi.org.in/pressreleases_rss.xml",official:true},
@@ -49,7 +50,7 @@ async function readSource(source){
   }
   const all=parseRSS(xml,{name:source.publisher,official:true})
     .filter(s=>trusted(s.url)&&inWindow(s.publishedAt,30))
-    .map(s=>({...s,sourceId:source.id,sourceName:source.name,...classify(s)}));
+    .map(s=>{const base={...s,sourceId:source.id,sourceName:source.name,...classify(s)};return {...base,...rankOfficialStory(base),suggestedHashtags:suggestedHashtags(base)};});
   // Some regulator feeds produce blank/old items; report transparently.
   return all;
 }
@@ -72,7 +73,7 @@ export async function fetchOfficialFeeds(now=Date.now()){
   const seen=new Set();
   const unique=stories.filter(s=>{const k=s.url.toLowerCase().replace(/\/$/,"");if(seen.has(k))return false;seen.add(k);return true});
   unique.sort((a,b)=>b.priority-a.priority||Date.parse(b.publishedAt)-Date.parse(a.publishedAt));
-  return {stories:unique.slice(0,100),sources,warnings,fetchedAt:new Date(now).toISOString(),windowDays:30,kind:"official-rss-metadata",demo:true,rightsNotice:"Only official RSS metadata. Open and verify the original before editing or publication."};
+  return {stories:unique.slice(0,100),sources,warnings,rankingInfo:"Heuristic ranking based on topic, recency and routine-release adjustment; not fact-checking or investment advice.",fetchedAt:new Date(now).toISOString(),windowDays:30,kind:"official-rss-metadata",demo:true,rightsNotice:"Only official RSS metadata. Open and verify the original before editing or publication."};
 }
 export default async function handler(request){
   if(request.method!=="GET")return new Response(JSON.stringify({error:"GET only"}),{status:405,headers:{"Content-Type":"application/json"}});
