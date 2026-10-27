@@ -1,7 +1,7 @@
 name: Free official news POC checks
 on:
   push:
-    branches: [relevance-alerts-hashtags, main]
+    branches: [manual-news-to-tweet, main]
   pull_request:
     branches: [main]
 permissions:
@@ -15,8 +15,8 @@ jobs:
         with:
           node-version: '22'
       - name: Validate official RSS and failure handling
-        run: node --test tests/official-poc.test.mjs tests/unified-workflow.test.mjs tests/minimal-ai.test.mjs tests/relevance-alerts.test.mjs
+        run: node --test tests/official-poc.test.mjs tests/unified-workflow.test.mjs tests/minimal-ai.test.mjs tests/relevance-alerts.test.mjs tests/manual-composer.test.mjs
       - name: Validate browser script syntax
         run: node --check official-poc.js
       - name: Validate serverless endpoint syntax
-        run: node --check netlify/functions/official-feed.mjs && node --check netlify/functions/ai-status.mjs && node --check netlify/functions/lib/editorial.mjs
+        run: node --check netlify/functions/official-feed.mjs && node --check netlify/functions/ai-status.mjs && node --check netlify/functions/lib/editorial.mjs && node --check netlify/functions/news-preview.mjs && node --check netlify/functions/draft.mjs
