@@ -32,7 +32,7 @@ test("Ranked feed controls and new-only bell coexist with source filter",()=>{
  assert.match(ui,/rankMode==="latest"/);
  assert.match(ui,/priorityOf\(b\)-priorityOf\(a\)/);
  assert.match(ui,/setInterval\(\(\)=>\{if\(!document\.hidden\)refresh\(\)\}/);
- assert.match(ui,/const firstVisit=known\.size===0/);
+ assert.match(ui,/firstVisit=known\.size===0/);
  assert.match(ui,/if\(!firstVisit/);
  assert.doesNotMatch(ui,/Notification\.requestPermission\(|serviceWorker\.register\(/);
 });
