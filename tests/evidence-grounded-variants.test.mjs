@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {vagueOpening,sweepingImpact,prepareDraftResult} from "../netlify/functions/lib/draft-quality.mjs";
+import draftHandler from "../netlify/functions/draft.mjs";
 
 const ui=readFileSync(new URL("../official-poc.js",import.meta.url),"utf8");
 const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
@@ -67,4 +68,38 @@ test("The AI prompt demands standalone subject-first posts and explicit sufficie
  assert.match(server,/contextStatus/);
  assert.match(server,/prepareDraftResult\(parsed,evidence\)/);
  assert.match(server,/temperature:0\.15/);
+});
+
+test("Live drafting endpoint applies the no-vague-context safety check after a model response",async()=>{
+ const fetchOriginal=globalThis.fetch;
+ const savedKey=process.env.MANAGER_ACCESS_KEY, savedOpenAI=process.env.OPENAI_API_KEY;
+ const manager="test-only-manager-key-over-24-chars";
+ let sent;
+ try{
+  process.env.MANAGER_ACCESS_KEY=manager;
+  process.env.OPENAI_API_KEY="fake-test-api-key-do-not-use";
+  globalThis.fetch=async (url,options)=>{
+   assert.equal(url,"https://api.openai.com/v1/responses");
+   sent=JSON.parse(options.body);
+   const content=JSON.stringify(raw);
+   return new Response(JSON.stringify({output:[{content:[{type:"output_text",text:content}]}]}),{status:200,headers:{"Content-Type":"application/json"}});
+  };
+  const result=await draftHandler(new Request("https://app.example/.netlify/functions/draft",{
+   method:"POST",headers:{"x-manager-key":manager,"content-type":"application/json"},
+   body:JSON.stringify({title:evidence.title,snippet:"",publisher:"RBI",sourceUrl:"https://www.rbi.org.in/Scripts/pressreleases.aspx"})
+  }));
+  assert.equal(result.status,200);
+  const generated=await result.json();
+  assert.match(generated.news,/^RBI:/);
+  assert.equal(generated.insight,"");
+  assert.equal(generated.contextStatus,"needs_source");
+  assert.ok(generated.contextNote.length>20);
+  assert.ok(generated.risks.some(x=>/original/i.test(x)));
+  assert.match(sent.instructions,/NEVER start either variant with/);
+  assert.equal(sent.text.format.schema.required.includes("contextStatus"),true);
+ }finally{
+  globalThis.fetch=fetchOriginal;
+  if(savedKey===undefined)delete process.env.MANAGER_ACCESS_KEY;else process.env.MANAGER_ACCESS_KEY=savedKey;
+  if(savedOpenAI===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=savedOpenAI;
+ }
 });
