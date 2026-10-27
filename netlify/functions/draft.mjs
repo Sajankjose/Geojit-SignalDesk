@@ -14,7 +14,7 @@ Return two short original-language drafts: news (what is known) and insight (wha
 No independent stock tips, buy/sell/hold, price targets, guaranteed returns, recommendations or investment advice.
 NEVER fabricate or transform numerical figures, dates, entities, causal explanations, policies, quotes, impact or forecasts not explicitly stated in evidence. When the summary is too sparse, be transparent and supply a cautious generic update; note missing details in risks.
 No copyrighted excerpt reproduction beyond minimal facts; write entirely fresh sentences.
-Offer 1-2 accurate topic-specific hashtags at the end of EACH draft. Avoid spammy broad hashtag sets.
+Return 1-2 strictly relevant topic-specific hashtags in the separate hashtags JSON array (each including #). Do NOT place any hashtag in the news or insight text itself; the application appends reviewed tags once. No spammy broad hashtag sets. If no useful hashtag can be supported, return an empty array.
 Source attribution and the regulatory disclosure will be appended by the application — do not include those in draft.
 Each draft <=165 characters to reserve space for required SEBI registration disclosure, attribution and possible URL.
 Mark every claim needing manual checks in risks. No invented Geojit research opinions.
