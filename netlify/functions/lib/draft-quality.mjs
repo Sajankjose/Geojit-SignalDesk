@@ -13,7 +13,7 @@ function factualFallback(evidence){
  // an organisation if the relationship is uncertain.
  const publisher=safeLength(evidence.publisher,50);
  const prefix=publisher&&!/^(?:user-provided|unknown)/i.test(publisher)?publisher+": ":"";
- return safeLength(prefix+title,165);
+ return safeLength(title.toLowerCase().startsWith(publisher.toLowerCase()+" ")?title:prefix+title,165);
 }
 export function prepareDraftResult(raw,evidence){
  if(!raw||typeof raw.news!=="string"||typeof raw.insight!=="string")throw Error("Incomplete AI response");
@@ -32,6 +32,7 @@ export function prepareDraftResult(raw,evidence){
   contextNote="The proposed explanation was too vague or speculative. Check the original source and add verified context before drafting this version.";
   risks.unshift("The AI explanation was withheld because it lacked a clear supported subject or made a sweeping claim.");
  }
+ if(!insight&&contextStatus==="supported")contextStatus="needs_source";
  if(contextStatus==="needs_source"){
   insight="";
   contextNote=contextNote||"The supplied headline or excerpt does not support a meaningful explanation. Open the original source and add verified detail.";
