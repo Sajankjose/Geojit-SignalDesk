@@ -5,7 +5,7 @@ import sessionHandler from "../netlify/functions/marketaux-session.mjs";
 import marketauxHandler from "../netlify/functions/marketaux-news.mjs";
 import {COOKIE_NAME,SESSION_SECONDS,makeSessionCookie,sessionValid,managerKeyMatches} from "../netlify/functions/lib/marketaux-auth.mjs";
 
-const URL="https://geojitsignaldesk.netlify.app/.netlify/functions/marketaux-session";
+const SESSION_ENDPOINT="https://geojitsignaldesk.netlify.app/.netlify/functions/marketaux-session";
 const NEWS="https://geojitsignaldesk.netlify.app/.netlify/functions/marketaux-news";
 const ui=readFileSync(new URL("../official-poc.js",import.meta.url),"utf8");
 const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
@@ -37,20 +37,20 @@ test("A signed HttpOnly Secure SameSite cookie expires after seven days and neve
 test("Session endpoint signs in once, GET recognises browser session, DELETE clears it, bad keys are rejected",async()=>{
  const old=saved();try{
   process.env.MANAGER_ACCESS_KEY="a-test-only-strong-secret-for-session";
-  const deny=await sessionHandler(new Request(URL,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({key:"wrong"})}));
+  const deny=await sessionHandler(new Request(SESSION_ENDPOINT,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({key:"wrong"})}));
   assert.equal(deny.status,401);
-  const login=await sessionHandler(new Request(URL,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({key:process.env.MANAGER_ACCESS_KEY})}));
+  const login=await sessionHandler(new Request(SESSION_ENDPOINT,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({key:process.env.MANAGER_ACCESS_KEY})}));
   assert.equal(login.status,200);
   assert.equal((await login.json()).authenticated,true);
   const cookie=parseCookie(login.headers.get("set-cookie"));
   assert.ok(cookie.startsWith(COOKIE_NAME+"="));
-  const status=await sessionHandler(new Request(URL,{headers:{cookie}}));
+  const status=await sessionHandler(new Request(SESSION_ENDPOINT,{headers:{cookie}}));
   assert.equal(status.status,200);
   assert.equal((await status.json()).authenticated,true);
-  const logout=await sessionHandler(new Request(URL,{method:"DELETE",headers:{cookie}}));
+  const logout=await sessionHandler(new Request(SESSION_ENDPOINT,{method:"DELETE",headers:{cookie}}));
   assert.equal(logout.status,200);
   assert.match(logout.headers.get("set-cookie"),/Max-Age=0/);
-  assert.equal((await sessionHandler(new Request(URL))).status,200);
+  assert.equal((await sessionHandler(new Request(SESSION_ENDPOINT))).status,200);
  }finally{reset(old)}
 });
 test("A signed cookie authorizes Marketaux metadata but cannot bypass commercial usage permission",async()=>{
