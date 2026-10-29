@@ -5,7 +5,7 @@ const el=(name,cls,text)=>{const node=document.createElement(name);if(cls)node.c
 const append=(parent,...nodes)=>{nodes.forEach(n=>parent.append(n));return parent};
 const storeKey="signaldesk:unified:poc:v1";
 const read=()=>{try{const x=JSON.parse(localStorage.getItem(storeKey)||"{}");return x&&typeof x==="object"&&x.drafts&&typeof x.drafts==="object"?x:{drafts:{},disclosure:""}}catch{return {drafts:{},disclosure:""}}};
-let workspace=read(),payload={stories:[],sources:[],warnings:[]},active="discover",source="all",windowDays=7,search="",rankMode="top",selectedId=null,loading=false,generating=false,marketauxStories=[],marketauxLoading=false,marketauxLoadedAt=0;
+let workspace=read(),payload={stories:[],sources:[],warnings:[]},active="discover",source="all",windowDays=7,search="",rankMode="top",selectedId=null,loading=false,generating=false,marketauxStories=[],marketauxLoading=false,marketauxLoadedAt=0,pibStories=[],pibLoading=false,pibLoadedAt=0;
 
 // In-page alerts only. They are NOT OS notifications, background checks or push delivery.
 const feedStateKey="signaldesk:official-feed-tracking:v1";
@@ -105,7 +105,8 @@ function navigate(view,updateHash=true){
 }
 function visibleStories(){
  const rows=source==="Marketaux"?marketauxStories:
-   source==="all"?[...payload.stories,...marketauxStories]:
+   source==="PIB"?pibStories:
+   source==="all"?[...payload.stories,...pibStories,...marketauxStories]:
    payload.stories.filter(s=>s.publisher===source);
  const seen=new Set();
  return rows.filter(s=>{const key=String(s.url||"").toLowerCase().replace(/\/$/,"");if(!key||seen.has(key))return false;seen.add(key);return true});
@@ -134,6 +135,41 @@ function showMarketauxReadiness(){
  else if(marketauxReadiness==="ready")marketauxNotice("Marketaux is configured and ready. News loads automatically when you open this tab; refreshes are limited to protect the free quota.");
  else marketauxNotice("Checking Marketaux access…");
  updateMarketauxAuthUI();
+}
+function showPIBPanel(){
+ $("pibPanel").hidden=source!=="PIB";
+ $("pibReload").disabled=pibLoading;
+}
+async function loadPIB(){
+ if(pibLoading)return;
+ if(pibLoadedAt&&Date.now()-pibLoadedAt<15*60_000){
+  $("pibStatus").textContent="Showing recently loaded PIB economy and policy releases. Updates refresh approximately every 15 minutes.";
+  renderStories();return;
+ }
+ pibLoading=true;$("pibReload").disabled=true;$("pibReload").textContent="Checking…";
+ $("pibStatus").textContent="Retrieving official PIB RSS press releases…";
+ try{
+  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),14000);
+  let response;try{response=await fetch("/.netlify/functions/pib-economy",{cache:"no-store",signal:ctrl.signal})}
+  finally{clearTimeout(timer)}
+  const data=await response.json();
+  if(!response.ok)throw Error(data.error||"PIB RSS unavailable.");
+  if(!Array.isArray(data.stories))throw Error("Invalid PIB RSS response.");
+  pibStories=data.stories;pibLoadedAt=Date.now();
+  $("pibStatus").textContent=pibStories.length?
+    "Loaded "+pibStories.length+" government economy and policy releases. Source: PIB, Government of India. Check the original before drafting.":
+    "PIB responded, but no matching economic press releases appeared in this feed window. You can also browse PIB directly.";
+  renderStories();renderHealth();
+ }catch(e){
+  $("pibStatus").textContent="Could not retrieve PIB feed: "+String(e.message||e)+". You can still browse the official PIB website from the link below.";
+ }finally{pibLoading=false;$("pibReload").disabled=false;$("pibReload").textContent="Refresh PIB"}
+}
+function switchSource(next){
+ source=next;
+ document.querySelectorAll("button[data-source]").forEach(x=>x.classList.toggle("selected",x.dataset.source===source));
+ showMarketauxPanel();showPIBPanel();renderStories();
+ if(source==="Marketaux")activateMarketaux();
+ if(source==="PIB")loadPIB();
 }
 function showMarketauxPanel(){
  $("marketauxPanel").hidden=source!=="Marketaux";
@@ -241,7 +277,7 @@ async function loadMarketaux(){
  finally{marketauxLoading=false;updateMarketauxAuthUI()}
 }
 function renderHealth(){
- $("total").textContent=payload.stories.length+marketauxStories.length;
+ $("total").textContent=payload.stories.length+marketauxStories.length+pibStories.length;
  $("todayCount").textContent=payload.stories.filter(s=>{const t=new Date(s.publishedAt).getTime();return t<=Date.now()&&Date.now()-t<=86400000}).length;
  $("health").textContent=payload.sources.filter(s=>s.ok).length+" / 4";
  const box=$("sources");box.replaceChildren();
@@ -259,7 +295,8 @@ function renderStories(){
   (s.title+" "+s.snippet+" "+s.category).toLowerCase().includes(search));
  shown.sort((a,b)=>rankMode==="latest"?Date.parse(b.publishedAt)-Date.parse(a.publishedAt):priorityOf(b)-priorityOf(a)||Date.parse(b.publishedAt)-Date.parse(a.publishedAt));
  if(!shown.length){
-  const msg=source==="Marketaux"?(marketauxStories.length?"No Indian-market reports match these filters. Try Latest or 7 days.":"No Indian-market articles loaded yet. Use Load 3 stories and check the connection status above."):
+  const msg=source==="PIB"?(pibStories.length?"No PIB economy/policy releases match these filters. Try 30 days or Latest.":"No PIB economy/policy stories loaded yet. See the status above and the official PIB website."):
+ source==="Marketaux"?(marketauxStories.length?"No Indian-market reports match these filters. Try Latest or 7 days.":"No Indian-market articles loaded yet. Use Load 3 stories and check the connection status above."):
  payload.stories.length?"No updates match these filters. Try 30 days or another source.":"No recent source-backed stories available. Check source health or retry.";
   list.append(el("div","empty",msg));return;
  }
@@ -268,6 +305,7 @@ function renderStories(){
   const existing=workspace.drafts[s.id];
   append(top,el("span","pill",s.publisher),el("span","pill secondary",s.category||"Official update"));
   if(s.provider==="Marketaux")top.append(el("span","pill marketaux-label","Via Marketaux · Unverified"));
+  if(s.provider==="PIB RSS")top.append(el("span","pill secondary","Government source · PIB"));
   const score=el("span","score-label "+(important(s)?"score-high":priorityOf(s)>=60?"score-mid":"score-low"),
     (important(s)?"High impact · ":"Relevance · ")+priorityOf(s)+"/100");
   score.title=s.rankBasis||"Editorial relevance estimate, not a fact check";
@@ -306,7 +344,7 @@ async function refresh(){
  finally{loading=false;$("refresh").disabled=false;$("refresh").textContent="↻ Refresh official feeds";renderFeeds()}
 }
 function starter(s){
- const publisher=s.publisher==="RBI"?"Reserve Bank of India":s.publisher==="SEBI"?"Securities and Exchange Board of India":s.publisher;
+ const publisher=s.publisher==="RBI"?"Reserve Bank of India":s.publisher==="SEBI"?"Securities and Exchange Board of India":s.publisher==="PIB"?"Press Information Bureau":s.publisher;
  return s.provider==="Marketaux"?s.title:publisher+" update: "+s.title;
 }
 function startDraft(s){
@@ -524,6 +562,8 @@ function renderStudio(){
  $("evidenceBasis").textContent=d.manual?
  (basis?"AI input: user-supplied headline and text (unverified). Open the original.":"AI input: user-supplied headline only. Open the original."):
  (basis?"AI input: official RSS headline and excerpt, not the full release. Verify original.":"AI input: headline only, not the full release. More source detail may be needed.");
+ if(d.source.provider==="PIB RSS")
+  $("evidenceBasis").textContent="AI input: PIB press-release headline and short summary only. Verify the original and attribute Press Information Bureau.";
  if(d.source.provider==="Marketaux")
   $("evidenceBasis").textContent="AI input: Marketaux publisher headline and short description only, not the article or exchange filing. Verify before publishing.";
  const note=$("contextNotice");
@@ -606,13 +646,14 @@ $("clearAlerts").addEventListener("click",()=>{
  feedState.unread=[];saveFeedState();updateAlertUI();setAlertsOpen(false);renderStories();
 });
 document.addEventListener("click",e=>{if(alertsOpen&&!e.target.closest(".alert-anchor"))setAlertsOpen(false)});
-$("marketauxLoad").addEventListener("click",loadMarketaux);
+$("pibReload").addEventListener("click",()=>{pibLoadedAt=0;loadPIB()});
+ $("openPibAlternative").addEventListener("click",()=>switchSource("PIB"));
+ $("marketauxLoad").addEventListener("click",loadMarketaux);
  $("marketauxConnect").addEventListener("click",connectMarketauxManager);
 $("marketauxLogout").addEventListener("click",logoutMarketaux);
  $("sourceTabs").addEventListener("click",e=>{
  const b=e.target.closest("button[data-source]");if(!b)return;
- source=b.dataset.source;document.querySelectorAll("button[data-source]").forEach(x=>x.classList.toggle("selected",x===b));
- showMarketauxPanel();renderStories();if(source==="Marketaux")activateMarketaux();
+ switchSource(b.dataset.source);
 });
 $("window").addEventListener("change",e=>{windowDays=Number(e.target.value);renderStories()});
 $("search").addEventListener("input",e=>{search=e.target.value.trim().toLowerCase();renderStories()});

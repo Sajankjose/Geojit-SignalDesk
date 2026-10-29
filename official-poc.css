@@ -276,3 +276,17 @@ footer{margin-top:35px;border-top:1px solid var(--line);padding:18px 0;color:#99
 .marketaux-setup a{color:#00574f;font-size:11px;font-weight:750}
 .marketaux-panel-head button:disabled{opacity:.65;cursor:not-allowed}
 .marketaux-setup[hidden]{display:none}
+
+
+/* Separate government financial-policy source, not a substitute for equity news. */
+.pib-tab{color:#0b6159}
+.pib-panel{margin:0 0 13px;border:1px solid #cde7e5;background:#f1f9f8;border-radius:11px;padding:14px 16px}
+.pib-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.pib-panel-head strong{font-size:12px;color:#07574f}
+.pib-panel p{color:#446c66;font-size:11px;line-height:1.6;margin:5px 0}
+.pib-panel small{font-size:10px;color:#637f7a}
+.pib-panel a{color:#00675e;font-weight:750}
+#pibStatus{padding:8px 10px;background:white;border-radius:8px;margin:10px 0}
+.marketaux-alternative{font-size:11px;line-height:1.65;padding:9px 0 0;margin:10px 0 0;color:#625679}
+.marketaux-pib-link{background:none;border:0;padding:0;display:inline;color:#075c53;font:inherit;font-weight:800;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+@media(max-width:680px){.pib-panel-head{flex-direction:column;align-items:stretch}.pib-panel-head button{width:100%}}
