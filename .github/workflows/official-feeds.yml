@@ -1,7 +1,7 @@
 name: Free official news POC checks
 on:
   push:
-    branches: [pib-economy-alternative, main]
+    branches: [fix-pib-rss-redirects, main]
   pull_request:
     branches: [main]
 permissions:

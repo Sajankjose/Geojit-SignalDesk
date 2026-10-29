@@ -6,7 +6,8 @@
 import {parseRSS} from "./news.mjs";
 import {rankOfficialStory,suggestedHashtags} from "./lib/editorial.mjs";
 
-const FEED="https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3";
+const FEED="https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3";
+const ALTERNATE="https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3";
 export const PIB_FEED_URL=FEED;
 const financeTerms=/\b(?:financial|finance|financing|fintech|fiscal|econom(?:y|ic|ics)|gdp|inflation|banking|banks?|credit|taxation|tax|gst|investment|investor|capital markets?|securit(?:y|ies)|stock markets?|mutual funds?|rbi|sebi|budget|insurance|exports?|imports?|trade|commerce|manufacturing|industrial growth|infrastructure|railways|energy|renewables?|ministry of finance|corporate affairs|public procurement|msme|pension|employment|rupee|monetary|interest rates?|sectors?|startups?|semiconductor|reserve bank|digital payments?)\b/i;
 const skip=/\b(?:photo gallery|media invitation|photo release|third.party content|copyright third.party)\b/i;
@@ -35,20 +36,37 @@ export function preparePIBStories(xml,now=Date.now()){
  }
  return stories.sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt)).slice(0,35);
 }
+// Allow only redirects between the two official PIB RSS hostnames.
+const allowedPIB=url=>{
+ try{const u=new URL(url);return u.protocol==="https:"&&["pib.gov.in","www.pib.gov.in"].includes(u.hostname.toLowerCase())&&u.pathname.toLowerCase()==="/rssmain.aspx"}catch{return false}
+};
+async function rssViaPIB(start){
+ let url=start;
+ for(let hop=0;hop<3;hop++){
+  if(!allowedPIB(url))throw Error("PIB RSS redirect left the official source");
+  const r=await fetch(url,{headers:{"Accept":"application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.1","User-Agent":"Geojit-SignalDesk/0.4 (PIB RSS reading)"},
+    redirect:"manual",signal:AbortSignal.timeout(5500)});
+  if(r.status>=300&&r.status<400){
+   const next=r.headers.get("location");
+   if(!next)throw Error("PIB RSS redirect missing destination");
+   url=new URL(next,url).href;continue;
+  }
+  if(!r.ok)throw Error("PIB RSS returned HTTP "+r.status);
+  if(Number(r.headers.get("content-length")||0)>1_500_000)throw Error("PIB RSS too large");
+  const xml=(await r.text()).slice(0,1_500_000);
+  if(!/<(?:rss|feed|rdf:RDF)(?:\s|>)/i.test(xml))throw Error("PIB did not return RSS XML");
+  return xml;
+ }
+ throw Error("PIB RSS redirected too many times");
+}
 let cache=null,loading=null;
 export async function loadPIB(now=Date.now()){
  if(cache&&now-cache.time<15*60_000)return {...cache.result,cached:true};
  if(loading)return loading;
  loading=(async()=>{
-  let res;
-  try{
-   res=await fetch(FEED,{headers:{"Accept":"application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.1","User-Agent":"Geojit-SignalDesk/0.3 PIB RSS reading"},
-    redirect:"error",signal:AbortSignal.timeout(8500)})
-  }catch{throw Error("PIB RSS is temporarily unreachable. Please try again.")}
-  if(!res.ok)throw Error("PIB RSS returned HTTP "+res.status);
-  if(Number(res.headers.get("content-length")||0)>1_500_000)throw Error("PIB RSS response is too large");
-  const xml=(await res.text()).slice(0,1_500_000);
-  if(!/<(?:rss|feed|rdf:RDF)(?:\s|>)/i.test(xml))throw Error("PIB did not return RSS XML");
+  let xml;
+  try{xml=await Promise.any([rssViaPIB(FEED),rssViaPIB(ALTERNATE)])}
+  catch{throw Error("PIB RSS unavailable from its two official hostnames. Open PIB directly or retry later.")}
   const stories=preparePIBStories(xml,now);
   const result={source:"PIB · Government of India",sourceUrl:"https://www.pib.gov.in/",
    stories,count:stories.length,checkedAt:new Date(now).toISOString(),windowDays:30,
