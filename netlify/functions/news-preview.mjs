@@ -19,7 +19,7 @@ export function checkedNewsURL(value){
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
 function auth(request){
  const configured=process.env.MANAGER_ACCESS_KEY||"",supplied=request.headers.get("x-manager-key")||"";
- if(!configured||configured.length<24||!supplied)return false;
+ if(!configured||!supplied)return false;
  const a=Buffer.from(configured),b=Buffer.from(supplied);
  return a.length===b.length&&timingSafeEqual(a,b);
 }
@@ -43,14 +43,14 @@ export function articleMetadata(html,url){
  return {title:title.replace(/<[^>]*>/g," ").slice(0,240),snippet:description.replace(/<[^>]*>/g," ").slice(0,850),publisher:publisher.slice(0,70),sourceUrl:url};
 }
 export default async function handler(request){
- if(!auth(request))return json({error:"Manager access is required. Connect AI in Studio first."},401);
+ if(!auth(request))return json({error:"Your manager connection is missing or has expired. Use Connect in Create from news to reconnect."},401);
  if(request.method!=="POST")return json({error:"POST required"},405);
  const origin=request.headers.get("origin");
  if(origin){try{if(new URL(origin).origin!==new URL(request.url).origin)return json({error:"Origin not allowed"},403)}catch{return json({error:"Origin not allowed"},403)}}
  let input;
  try{if(Number(request.headers.get("content-length")||0)>2500)return json({error:"Request too large"},413);input=await request.json()}catch{return json({error:"Invalid request"},400)}
  const safe=checkedNewsURL(input?.url);
- if(!safe)return json({error:"This URL isn't in the supported source list. Paste a headline and news text instead; add the original URL for reference."},422);
+ if(!safe)return json({error:"Automatic headline preview is not available for this publisher. Expand Add headline and facts, then generate from that text with this URL as the reference."},422);
  try{
   const response=await fetch(safe.href,{redirect:"manual",headers:{"Accept":"text/html,application/xhtml+xml;q=0.9","User-Agent":"Geojit-SignalDesk-EditorialPOC/1.0"},signal:AbortSignal.timeout(9000)});
   if(!response.ok)return json({error:response.status>=300&&response.status<400?"This publisher redirects or restricts automated previews. Paste the headline and excerpt instead.":"Publisher unavailable ("+response.status+"). Paste the news text instead."},422);
