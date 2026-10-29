@@ -5,7 +5,7 @@ const el=(name,cls,text)=>{const node=document.createElement(name);if(cls)node.c
 const append=(parent,...nodes)=>{nodes.forEach(n=>parent.append(n));return parent};
 const storeKey="signaldesk:unified:poc:v1";
 const read=()=>{try{const x=JSON.parse(localStorage.getItem(storeKey)||"{}");return x&&typeof x==="object"&&x.drafts&&typeof x.drafts==="object"?x:{drafts:{},disclosure:""}}catch{return {drafts:{},disclosure:""}}};
-let workspace=read(),payload={stories:[],sources:[],warnings:[]},active="discover",source="all",windowDays=7,search="",rankMode="top",selectedId=null,loading=false,generating=false;
+let workspace=read(),payload={stories:[],sources:[],warnings:[]},active="discover",source="all",windowDays=7,search="",rankMode="top",selectedId=null,loading=false,generating=false,marketauxStories=[],marketauxLoading=false,marketauxLoadedAt=0;
 
 // In-page alerts only. They are NOT OS notifications, background checks or push delivery.
 const feedStateKey="signaldesk:official-feed-tracking:v1";
@@ -103,8 +103,64 @@ function navigate(view,updateHash=true){
  $("topbarTitle").textContent=headings[active];
  window.scrollTo({top:0,behavior:"auto"});
 }
+function visibleStories(){
+ const rows=source==="Marketaux"?marketauxStories:
+   source==="all"?[...payload.stories,...marketauxStories]:
+   payload.stories.filter(s=>s.publisher===source);
+ const seen=new Set();
+ return rows.filter(s=>{const key=String(s.url||"").toLowerCase().replace(/\/$/,"");if(!key||seen.has(key))return false;seen.add(key);return true});
+}
+function marketauxNotice(message,warning=false){
+ const el=$("marketauxStatus");el.textContent=message;el.classList.toggle("warning",warning);
+}
+function showMarketauxPanel(){
+ $("marketauxPanel").hidden=source!=="Marketaux";
+ $("marketauxLoad").disabled=marketauxLoading;
+ $("marketauxAuth").open=source==="Marketaux"&&!managerKey;
+}
+async function connectMarketauxManager(){
+ const key=$("marketauxManagerKey").value.trim();if(!key){marketauxNotice("Enter your SignalDesk manager key first.",true);return}
+ $("marketauxConnect").disabled=true;
+ try{
+  const r=await fetch("/.netlify/functions/ai-status",{headers:{"x-manager-key":key},cache:"no-store"});
+  const obj=await r.json();
+  if(!r.ok||!obj.ready)throw Error(obj.error||"Manager connection unavailable");
+  managerKey=key;try{sessionStorage.setItem("signaldesk:manager:key",managerKey)}catch{}
+  $("marketauxManagerKey").value="";$("marketauxAuth").open=false;
+  updateComposeConnection();
+  marketauxNotice("Manager connected. You can now check whether the Marketaux trial is enabled.");
+ }catch(e){marketauxNotice(String(e.message||e),true)}
+ finally{$("marketauxConnect").disabled=false}
+}
+async function loadMarketaux(){
+ if(marketauxLoading)return;
+ if(!managerKey){$("marketauxAuth").open=true;marketauxNotice("Connect your manager key above before loading the Indian-market trial.",true);return}
+ // Avoid burning the 100/day trial limit through repeated clicks.
+ if(marketauxLoadedAt&&Date.now()-marketauxLoadedAt<45*60_000){
+  marketauxNotice("Using the previously loaded India-linked stories. Load again after 45 minutes to conserve your free quota.");
+  renderStories();return;
+ }
+ marketauxLoading=true;$("marketauxLoad").disabled=true;$("marketauxLoad").textContent="Checking…";
+ try{
+  const ctrl=new AbortController(),timeout=setTimeout(()=>ctrl.abort(),16000);
+  let r;try{r=await fetch("/.netlify/functions/marketaux-news",{headers:{"x-manager-key":managerKey},signal:ctrl.signal,cache:"no-store"})}
+  finally{clearTimeout(timeout)}
+  let data;try{data=await r.json()}catch{throw Error("Marketaux service returned an unreadable response.")}
+  if(!r.ok){
+   if(r.status===401){managerKey="";try{sessionStorage.removeItem("signaldesk:manager:key")}catch{}$("marketauxAuth").open=true;updateComposeConnection()}
+   throw Error(data.error||"Marketaux is not available yet.");
+  }
+  if(!Array.isArray(data.stories))throw Error("Unexpected Marketaux response.");
+  marketauxStories=data.stories;marketauxLoadedAt=Date.now();
+  marketauxNotice(marketauxStories.length?
+    "Received "+marketauxStories.length+" India-linked publisher stories via Marketaux. Source reports are unverified; confirm all market facts and usage rights.":
+    "Marketaux is connected, but returned no qualifying India-linked articles in the last seven days.");
+  renderStories();renderHealth();
+ }catch(e){marketauxNotice(String(e.message||e),true)}
+ finally{marketauxLoading=false;$("marketauxLoad").disabled=false;$("marketauxLoad").textContent="Load 3 stories"}
+}
 function renderHealth(){
- $("total").textContent=payload.stories.length;
+ $("total").textContent=payload.stories.length+marketauxStories.length;
  $("todayCount").textContent=payload.stories.filter(s=>{const t=new Date(s.publishedAt).getTime();return t<=Date.now()&&Date.now()-t<=86400000}).length;
  $("health").textContent=payload.sources.filter(s=>s.ok).length+" / 4";
  const box=$("sources");box.replaceChildren();
@@ -116,26 +172,28 @@ function renderHealth(){
 }
 function renderStories(){
  const list=$("news");list.replaceChildren();const now=Date.now();
- const shown=payload.stories.filter(s=>(source==="all"||s.publisher===source)&&
+ const shown=visibleStories().filter(s=>
   (now-new Date(s.publishedAt).getTime()<=windowDays*86400000)&&
   (rankMode!=="high"||important(s))&&(rankMode!=="unread"||feedState.unread.includes(s.id))&&
   (s.title+" "+s.snippet+" "+s.category).toLowerCase().includes(search));
  shown.sort((a,b)=>rankMode==="latest"?Date.parse(b.publishedAt)-Date.parse(a.publishedAt):priorityOf(b)-priorityOf(a)||Date.parse(b.publishedAt)-Date.parse(a.publishedAt));
  if(!shown.length){
-  const msg=payload.stories.length?"No official updates match these filters. Try 30 days or another source.":"No recent source-backed stories available. Check source health or retry.";
+  const msg=source==="Marketaux"?(marketauxStories.length?"No Indian-market reports match these filters. Try Latest or 7 days.":"No Indian-market articles loaded yet. Use Load 3 stories and check the connection status above."):
+ payload.stories.length?"No updates match these filters. Try 30 days or another source.":"No recent source-backed stories available. Check source health or retry.";
   list.append(el("div","empty",msg));return;
  }
  for(const s of shown){
   const item=el("article","news-card"),top=el("div","card-top");
   const existing=workspace.drafts[s.id];
   append(top,el("span","pill",s.publisher),el("span","pill secondary",s.category||"Official update"));
+  if(s.provider==="Marketaux")top.append(el("span","pill marketaux-label","Via Marketaux · Unverified"));
   const score=el("span","score-label "+(important(s)?"score-high":priorityOf(s)>=60?"score-mid":"score-low"),
     (important(s)?"High impact · ":"Relevance · ")+priorityOf(s)+"/100");
   score.title=s.rankBasis||"Editorial relevance estimate, not a fact check";
   top.append(score);
   if(feedState.unread.includes(s.id))top.append(el("span","pill new-pill","NEW"));
   if(existing)top.append(el("span","pill "+(existing.status==="Published"?"":"secondary"),existing.status));
-  const title=el("h3","card-title",s.title),summary=el("p","story-summary",s.snippet||"Open the official source for the full statement.");
+  const title=el("h3","card-title",s.title),summary=el("p","story-summary",s.snippet||"Open the original publisher source for details.");
   const meta=el("div","story-meta");
   append(meta,el("span","",dateFmt(s.publishedAt,false,s.dateOnly)));
   const rationale=el("p","why-relevant",s.reason||"Relevance is a provisional editorial estimate; verify the primary source.");
@@ -167,14 +225,14 @@ async function refresh(){
  finally{loading=false;$("refresh").disabled=false;$("refresh").textContent="↻ Refresh official feeds";renderFeeds()}
 }
 function starter(s){
- const publisher=s.publisher==="RBI"?"Reserve Bank of India":"Securities and Exchange Board of India";
- return publisher+" update: "+s.title;
+ const publisher=s.publisher==="RBI"?"Reserve Bank of India":s.publisher==="SEBI"?"Securities and Exchange Board of India":s.publisher;
+ return s.provider==="Marketaux"?s.title:publisher+" update: "+s.title;
 }
 function startDraft(s){
  if(!s?.id||!validUrl(s.url))return;
  if(!workspace.drafts[s.id]){
   const ts=new Date().toISOString();
-  workspace.drafts[s.id]={id:s.id,source:{id:s.id,title:s.title,snippet:s.snippet||"",url:s.url,publisher:s.publisher,category:s.category||"Official update",publishedAt:s.publishedAt,dateOnly:!!s.dateOnly,suggestedHashtags:defaultTags(s)},
+  workspace.drafts[s.id]={id:s.id,source:{id:s.id,title:s.title,snippet:s.snippet||"",url:s.url,publisher:s.publisher,category:s.category||"Official update",publishedAt:s.publishedAt,dateOnly:!!s.dateOnly,provider:s.provider||"Official RSS",suggestedHashtags:defaultTags(s)},
    variants:{news:starter(s),insight:""},variant:"news",status:"Draft",verified:false,sourceLink:false,publishedText:"",xUrl:"",risks:[],hashtags:defaultTags(s),suggestedHashtags:defaultTags(s),createdAt:ts,updatedAt:ts};
   persist();
  }
@@ -385,6 +443,8 @@ function renderStudio(){
  $("evidenceBasis").textContent=d.manual?
  (basis?"AI input: user-supplied headline and text (unverified). Open the original.":"AI input: user-supplied headline only. Open the original."):
  (basis?"AI input: official RSS headline and excerpt, not the full release. Verify original.":"AI input: headline only, not the full release. More source detail may be needed.");
+ if(d.source.provider==="Marketaux")
+  $("evidenceBasis").textContent="AI input: Marketaux publisher headline and short description only, not the article or exchange filing. Verify before publishing.";
  const note=$("contextNotice");
  note.hidden=!(d.variant==="insight"&&d.contextStatus==="needs_source");
  note.textContent=d.contextStatus==="needs_source"?
@@ -465,9 +525,12 @@ $("clearAlerts").addEventListener("click",()=>{
  feedState.unread=[];saveFeedState();updateAlertUI();setAlertsOpen(false);renderStories();
 });
 document.addEventListener("click",e=>{if(alertsOpen&&!e.target.closest(".alert-anchor"))setAlertsOpen(false)});
-$("sourceTabs").addEventListener("click",e=>{
+$("marketauxLoad").addEventListener("click",loadMarketaux);
+ $("marketauxConnect").addEventListener("click",connectMarketauxManager);
+ $("sourceTabs").addEventListener("click",e=>{
  const b=e.target.closest("button[data-source]");if(!b)return;
- source=b.dataset.source;document.querySelectorAll("button[data-source]").forEach(x=>x.classList.toggle("selected",x===b));renderStories();
+ source=b.dataset.source;document.querySelectorAll("button[data-source]").forEach(x=>x.classList.toggle("selected",x===b));
+ showMarketauxPanel();renderStories();
 });
 $("window").addEventListener("change",e=>{windowDays=Number(e.target.value);renderStories()});
 $("search").addEventListener("input",e=>{search=e.target.value.trim().toLowerCase();renderStories()});
