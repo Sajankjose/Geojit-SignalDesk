@@ -240,3 +240,21 @@ footer{margin-top:35px;border-top:1px solid var(--line);padding:18px 0;color:#99
 .compose-fallback[open]{border-color:#d9c6a9;background:#fffaf2}
 .compose-fallback summary small{font-size:10px;font-weight:500;color:#9a7e60}
 .compose-credentials summary small{font-weight:700;color:#4c7a65}
+
+
+/* Optional third-party Indian Markets trial — intentionally distinct from official RSS. */
+.india-news-tab{display:inline-flex;align-items:center;gap:5px}
+.poc-dot{border-radius:4px;background:#ffefdf;color:#9c6b39;font-size:8px;font-weight:850;padding:2px 4px}
+.marketaux-panel{background:#f5f2fc;border:1px solid #e7e0f3;border-radius:11px;margin:0 0 13px;padding:15px 16px;color:#4d4965}
+.marketaux-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.marketaux-panel strong{display:block;font-size:12px;color:#4a4064;margin-bottom:4px}
+.marketaux-panel p{font-size:11px;line-height:1.65;color:#6e6682;margin:4px 0}
+.marketaux-panel #marketauxStatus{background:#fff;border-radius:8px;padding:10px 12px;margin:12px 0 0}
+.marketaux-panel #marketauxStatus.warning{background:#fff8ea;border-left:3px solid #eca974;color:#865c38}
+.marketaux-label{background:#f0eafb;color:#736390}
+.marketaux-auth{border-top:1px solid #e7e0f2;margin-top:13px;padding-top:11px}
+.marketaux-auth summary{cursor:pointer;font-size:11px;font-weight:750;color:#63577d}
+.marketaux-auth>div{display:flex;gap:9px;margin:9px 0}
+.marketaux-auth input{min-width:0;flex:1;background:#fff;border:1px solid #d9d0e7;border-radius:8px;padding:10px 12px;font-size:12px}
+.marketaux-auth small{font-size:10px;color:#817797;line-height:1.6}
+@media(max-width:670px){.marketaux-panel-head{flex-direction:column;align-items:stretch}.marketaux-panel-head button{width:100%}.marketaux-auth>div{flex-direction:column}}
