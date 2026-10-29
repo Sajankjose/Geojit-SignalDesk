@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import sessionHandler from "../netlify/functions/marketaux-session.mjs";
+import sessionHandler,{marketauxReadiness} from "../netlify/functions/marketaux-session.mjs";
 import marketauxHandler from "../netlify/functions/marketaux-news.mjs";
 import {COOKIE_NAME,SESSION_SECONDS,makeSessionCookie,sessionValid,managerKeyMatches} from "../netlify/functions/lib/marketaux-auth.mjs";
 
@@ -78,8 +78,46 @@ test("Frontend recognises signed-in manager without repeated key and automatical
  assert.match(ui,/credentials:"same-origin"/);
  assert.match(ui,/marketauxSession=true/);
  assert.match(ui,/if\(source==="Marketaux"\)activateMarketaux\(\)/);
- assert.match(ui,/if\(connected&&source==="Marketaux"\)await loadMarketaux\(\)/);
+ assert.match(ui,/if\(connected&&marketauxReady\(\)&&source==="Marketaux"\)await loadMarketaux\(\)/);
  assert.match(ui,/sessionStorage\.removeItem\("signaldesk:manager:key"\)/);
  assert.doesNotMatch(ui,/localStorage\.setItem\([^)]*managerKey/);
  assert.doesNotMatch(ui,/api\.x\.com\/2\/tweets|api\.twitter\.com\/2\/tweets/);
+});
+
+test("Readiness reports specific missing approval vs missing token vs ready, without exposing token",async()=>{
+ const old=saved();
+ try{
+  process.env.MANAGER_ACCESS_KEY="a-test-only-strong-secret-for-session";
+  process.env.MARKETAUX_API_TOKEN="fake-private-token";
+  delete process.env.MARKETAUX_USAGE_APPROVED;
+  assert.equal(marketauxReadiness(),"approval_required");
+  const cookie=parseCookie(makeSessionCookie());
+  let res=await sessionHandler(new Request(SESSION_ENDPOINT,{headers:{cookie}}));
+  let body=await res.json();
+  assert.equal(body.authenticated,true);
+  assert.equal(body.marketauxStatus,"approval_required");
+  assert.doesNotMatch(JSON.stringify(body),/fake-private-token/);
+  process.env.MARKETAUX_USAGE_APPROVED="true";
+  delete process.env.MARKETAUX_API_TOKEN;
+  assert.equal(marketauxReadiness(),"token_missing");
+  res=await sessionHandler(new Request(SESSION_ENDPOINT,{headers:{cookie}}));
+  assert.equal((await res.json()).marketauxStatus,"token_missing");
+  process.env.MARKETAUX_API_TOKEN="fake-private-token";
+  assert.equal(marketauxReadiness(),"ready");
+  res=await sessionHandler(new Request(SESSION_ENDPOINT,{headers:{cookie}}));
+  assert.equal((await res.json()).marketauxStatus,"ready");
+  res=await sessionHandler(new Request(SESSION_ENDPOINT));
+  body=await res.json();
+  assert.equal(body.marketauxStatus,"sign_in_required");
+ }finally{reset(old)}
+});
+test("Indian Markets clearly shows permission requirements and does not offer misleading Load button",()=>{
+ assert.match(html,/id="marketauxSetup"/);
+ assert.match(html,/MARKETAUX_USAGE_APPROVED/);
+ assert.match(ui,/marketauxReadiness==="approval_required"/);
+ assert.match(ui,/marketauxReadiness==="token_missing"/);
+ assert.match(ui,/marketauxReadiness==="ready"/);
+ assert.match(ui,/if\(!marketauxReady\(\)\)\{showMarketauxReadiness\(\);return\}/);
+ assert.match(ui,/if\(connected&&marketauxReady\(\)&&source==="Marketaux"\)await loadMarketaux\(\)/);
+ assert.match(ui,/\$\("marketauxLoad"\)\.disabled=marketauxLoading\|\|marketauxAuthPending\|\|!ready/);
 });
