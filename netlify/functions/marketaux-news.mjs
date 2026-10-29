@@ -85,7 +85,7 @@ export default async function handler(request){
  if(!acceptedOrigin(request))return json({error:"Origin not allowed"},403);
  if(!authorised(request))return json({error:"Connect your manager key in SignalDesk before viewing Indian Markets."},401);
  if(process.env.MARKETAUX_USAGE_APPROVED!=="true")
-  return json({enabled:false,error:"Marketaux feed is prepared but disabled pending confirmation that Geojit may use this API/data in an internal commercial editorial tool. Once authorised, set MARKET AUX_USAGE_APPROVED (without the space) to true in Netlify Functions production settings and redeploy."},403);
+  return json({enabled:false,error:"Marketaux feed is prepared but disabled pending confirmation that Geojit may use this API/data in an internal commercial editorial tool. Once authorised, set MARKETAUX_USAGE_APPROVED to true in Netlify Functions production settings and redeploy."},403);
  if(!process.env.MARKETAUX_API_TOKEN)return json({enabled:false,error:"MARKETAUX_API_TOKEN is not available to the Netlify Functions production deployment. Confirm scope and redeploy."},503);
  try{return json({enabled:true,...await fetchMarketaux()})}
  catch(e){return json({enabled:false,error:String(e.message||"Marketaux unavailable")},e.status||502)}
