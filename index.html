@@ -29,7 +29,7 @@
     <div class="content">
       <section id="discoverView" class="view-screen">
         <div class="page-lead">
-          <div><div class="eyebrow green">LIVE OFFICIAL SOURCES</div><h1>Today's signals</h1><p>What matters for investors, from RBI and SEBI.</p></div>
+          <div><div class="eyebrow green">FINANCIAL NEWS DISCOVERY</div><h1>Today's signals</h1><p>Official RBI/SEBI updates and a separate, permission-gated Indian-market news trial.</p></div>
           <div class="lead-actions"><button type="button" id="composeToggle" class="compose-launch" aria-expanded="false" aria-controls="composePanel">✦ Create from news</button><button type="button" id="refresh" class="secondary">↻ Refresh</button></div>
         </div>
         <section id="composePanel" class="compose-panel" hidden aria-label="Create a tweet from your news">
@@ -64,7 +64,7 @@
         </section>
         <div class="signal-bar" aria-label="News feed summary">
           <span><b id="total">—</b> stories</span><span><b id="todayCount">—</b> in 24 hours</span>
-          <span class="feed-connected"><span class="signal" aria-hidden="true"></span><b id="health">—</b> sources connected</span>
+          <span class="feed-connected"><span class="signal" aria-hidden="true"></span><b id="health">—</b> official feeds connected</span>
           <span class="update-note" id="lastFetch">Connecting…</span>
         </div>
         <div id="error" class="alert" role="status" aria-live="polite" hidden></div>
@@ -84,10 +84,12 @@
                 <button type="button" class="selected" data-source="all">All</button>
                 <button type="button" data-source="RBI">RBI</button>
                 <button type="button" data-source="SEBI">SEBI</button>
+                <button type="button" data-source="Marketaux" class="india-news-tab">Indian Markets <span class="poc-dot">POC</span></button>
               </div>
               <label class="range" for="window">Published <select id="window"><option value="1">24 hours</option><option value="7" selected>7 days</option><option value="30">30 days</option></select></label>
             </div>
-            <input id="search" type="search" placeholder="Search news or topics" aria-label="Search official news"><p id="feedAlertStatus" class="feed-alert-status" role="status" aria-live="polite" hidden></p>
+            <div id="marketauxPanel" class="marketaux-panel" hidden><div class="marketaux-panel-head"><div><strong>Indian Markets</strong><p>Source: Marketaux · India-linked entity news. Not raw prices or verified corporate filings.</p></div><button type="button" id="marketauxLoad" class="outline">Load 3 stories</button></div><p id="marketauxStatus" role="status" aria-live="polite">Loading is manual to protect the free API allowance. Connect the manager key through Studio or Create from news.</p></div>
+            <input id="search" type="search" placeholder="Search news or topics" aria-label="Search official and market news"><p id="feedAlertStatus" class="feed-alert-status" role="status" aria-live="polite" hidden></p>
             <div id="news" class="news-items" aria-live="polite"><div class="skeleton">Fetching official releases…</div></div>
           </section>
           <aside class="discovery-rail">
@@ -98,7 +100,7 @@
               <summary>Source health <span class="muted-dot">●</span></summary>
               <div id="sources"><p class="muted">Checking sources…</p></div>
             </details>
-            <div class="data-note">Free RBI/SEBI feeds. No paid news subscription or MarketsMojo content is used.</div>
+            <div class="data-note">RBI/SEBI feeds are free official sources. Marketaux is a separate optional trial, available only after confirming usage rights. MarketsMojo content is not used.</div>
           </aside>
         </div>
       </section>
