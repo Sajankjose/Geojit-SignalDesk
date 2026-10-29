@@ -54,7 +54,7 @@ async function rssViaPIB(start){
   if(!r.ok)throw Error("PIB RSS returned HTTP "+r.status);
   if(Number(r.headers.get("content-length")||0)>1_500_000)throw Error("PIB RSS too large");
   const xml=(await r.text()).slice(0,1_500_000);
-  if(!/<(?:rss|feed|rdf:RDF)(?:\\s|>)/i.test(xml))throw Error("PIB did not return RSS XML");
+  if(!/<(?:rss|feed|rdf:RDF)(?:\s|>)/i.test(xml))throw Error("PIB did not return RSS XML");
   return xml;
  }
  throw Error("PIB RSS redirected too many times");
