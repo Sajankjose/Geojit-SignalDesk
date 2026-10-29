@@ -22,7 +22,10 @@ Suggested permission question to Marketaux or Geojit Legal/MarCom: *Does our fre
 1. Confirm `MARKETAUX_API_TOKEN` exists in Netlify **Project configuration → Environment variables**, with scope **Functions**, deploy context **Production**. Do not reveal it in chat.
 2. After permissions are confirmed, add `MARKETAUX_USAGE_APPROVED=true` in the same **Functions → Production** context. Redeploy.
 3. Open SignalDesk → **Discover → Indian Markets (POC)**.
-4. Enter the existing SignalDesk manager key if prompted, then click **Load 3 stories**. Neither the API token nor OpenAI key is ever entered in the page.
+4. Sign in with the existing SignalDesk manager key **once on this browser**, if prompted. This creates a signed, seven-day HttpOnly/Secure/SameSite cookie with no plaintext key saved to localStorage. Subsequent visits restore the session automatically.
+5. Select the Indian Markets tab. After a valid session is found, SignalDesk automatically loads up to three articles and reuses its recent fetch for 45 minutes. You can still click **Load 3 stories** if necessary.
+6. Use **Sign out** to invalidate the browser cookie. Signing out also clears the separate AI manager key from this browser tab. Neither the Marketaux token nor the OpenAI key is entered on the webpage.
+7. Check publisher, publication time and original URL before drafting.
 5. Verify publisher, publication time and original URL. Test relevance, article count, quota use and deduplication. Send individual stories to Studio for human review and manual X posting.
 
 ## Operational limitations
@@ -33,3 +36,8 @@ Suggested permission question to Marketaux or Geojit Legal/MarCom: *Does our fre
 - OpenAI API billing is separate from free Marketaux/RBI/SEBI discovery.
 - Current SignalDesk site is not necessarily restricted to internal users and browser-local drafts are not a formal compliance archive; protect it before real company workflows.
 - References: https://www.marketaux.com/documentation · https://www.marketaux.com/pricing · https://www.marketaux.com/tos
+
+## Remembered login (POC convenience)
+The new `/.netlify/functions/marketaux-session` endpoint sets a seven-day signed cookie valid only for Marketaux metadata access. A cookie is an authenticated bearer credential, even though it contains **no manager key**. It is sent automatically only to Netlify Functions on the SignalDesk origin. The login depends on the existing `MANAGER_ACCESS_KEY`; rotating that key immediately invalidates older cookies. The browser can clear it by using **Sign out**. If browser cookies are disabled or cleared, the manager signs in again.
+
+This is NOT enterprise SSO, individual user identity, a usage audit or site visitor authentication. Before larger deployment, introduce company SSO, site visitor restrictions, CSRF review, logging/rate limits and centrally managed permissions. The separate `MARKETAUX_USAGE_APPROVED=true` licence gate remains mandatory and cannot be bypassed by a remembered session.
