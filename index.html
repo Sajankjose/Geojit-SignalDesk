@@ -33,7 +33,7 @@
           <div class="lead-actions"><button type="button" id="composeToggle" class="compose-launch" aria-expanded="false" aria-controls="composePanel">✦ Create from news</button><button type="button" id="refresh" class="secondary">↻ Refresh</button></div>
         </div>
         <section id="composePanel" class="compose-panel" hidden aria-label="Create a tweet from your news">
-          <div class="compose-intro"><div><span class="compose-eyebrow">YOUR STORY → GEOJIT POST</span><h2>Create a tweet from a link or text</h2><p>Paste a news link, or copy the relevant facts. SignalDesk prepares two editable AI variants.</p></div><button type="button" id="composeClose" class="compose-close" aria-label="Close creator">×</button></div>
+          <div class="compose-intro"><div><span class="compose-eyebrow">YOUR STORY → GEOJIT POST</span><h2>Create a tweet from news</h2><p>Use a supported article link or paste the headline and key facts. Generate two editable, source-backed drafts.</p></div><button type="button" id="composeClose" class="compose-close" aria-label="Close creator">×</button></div>
           <div class="compose-tabs" role="group" aria-label="Input type">
             <button type="button" data-compose-mode="link" class="selected">🔗 News link</button>
             <button type="button" data-compose-mode="text">☷ Paste news text</button>
@@ -41,10 +41,11 @@
           <div class="compose-fields">
             <div id="composeLinkFields">
               <label for="composeURL">News URL</label>
-              <input id="composeURL" type="url" placeholder="https://www.rbi.org.in/..." autocomplete="url" maxlength="1500">
-              <details class="compose-fallback"><summary>If the page can't be read, add the headline yourself</summary>
+              <input id="composeURL" type="url" placeholder="Paste a news link, e.g. https://www.rbi.org.in/..." autocomplete="url" maxlength="1500">
+              <p id="composeLinkHelp" class="compose-link-help" role="status" hidden></p>
+              <details id="composeFallback" class="compose-fallback"><summary>Add headline and key facts <small>(for unsupported or blocked links)</small></summary>
                 <label for="composeHeadline">Headline</label><input id="composeHeadline" maxlength="260" placeholder="Paste the news headline">
-                <label for="composeExcerpt">Important facts or brief summary</label><textarea id="composeExcerpt" maxlength="3200" rows="3" placeholder="Optional: the relevant facts from the news"></textarea>
+                <label for="composeExcerpt">Important facts or brief summary</label><textarea id="composeExcerpt" maxlength="3200" rows="3" placeholder="Paste relevant facts you have permission to use. A headline alone may not support a Why It Matters draft."></textarea>
               </details>
             </div>
             <div id="composeTextFields" hidden>
@@ -54,12 +55,12 @@
               <input id="composeReference" type="url" maxlength="1500" placeholder="https://publisher.com/story">
             </div>
           </div>
-          <details id="composeCredentials" class="compose-credentials"><summary>AI connection <small>(first time only)</small></summary>
-            <p>The OpenAI key stays in Netlify. Enter only the separate manager access key for this browser tab.</p>
+          <details id="composeCredentials" class="compose-credentials"><summary>AI connection <small id="composeConnectionState">(connect once per browser tab)</small></summary>
+            <p>The OpenAI key stays in Netlify. Enter only your manager access key. If you type it here, Generate will connect automatically.</p>
             <div class="compose-credential-row"><input type="password" id="composeManagerKey" placeholder="Manager access key" autocomplete="off"><button type="button" id="composeConnect" class="outline">Connect</button></div>
           </details>
           <div class="compose-footer"><div><button type="button" id="composeGenerate" class="compose-action">✦ Generate tweet variants</button><button type="button" id="composeManual" class="outline">Continue without AI</button></div>
-          <p id="composeStatus" class="compose-status" role="status" aria-live="polite">AI generates drafts—not verified news. Use only material you may process; do not paste client-confidential information.</p></div>
+          <p id="composeStatus" class="compose-status" role="status" aria-live="polite">AI drafts are not fact-checked. Do not paste confidential or unlicensed content.</p></div>
         </section>
         <div class="signal-bar" aria-label="News feed summary">
           <span><b id="total">—</b> stories</span><span><b id="todayCount">—</b> in 24 hours</span>
