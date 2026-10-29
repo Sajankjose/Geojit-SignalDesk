@@ -29,7 +29,7 @@
     <div class="content">
       <section id="discoverView" class="view-screen">
         <div class="page-lead">
-          <div><div class="eyebrow green">FINANCIAL NEWS DISCOVERY</div><h1>Today's signals</h1><p>Official RBI/SEBI updates and a separate, permission-gated Indian-market news trial.</p></div>
+          <div><div class="eyebrow green">FINANCIAL NEWS DISCOVERY</div><h1>Today's signals</h1><p>Official regulator and economic news, with an optional licensed company-news feed.</p></div>
           <div class="lead-actions"><button type="button" id="composeToggle" class="compose-launch" aria-expanded="false" aria-controls="composePanel">✦ Create from news</button><button type="button" id="refresh" class="secondary">↻ Refresh</button></div>
         </div>
         <section id="composePanel" class="compose-panel" hidden aria-label="Create a tweet from your news">
@@ -84,9 +84,16 @@
                 <button type="button" class="selected" data-source="all">All</button>
                 <button type="button" data-source="RBI">RBI</button>
                 <button type="button" data-source="SEBI">SEBI</button>
+                <button type="button" data-source="PIB" class="pib-tab">Economy &amp; Policy</button>
                 <button type="button" data-source="Marketaux" class="india-news-tab">Indian Markets <span class="poc-dot">POC</span></button>
               </div>
               <label class="range" for="window">Published <select id="window"><option value="1">24 hours</option><option value="7" selected>7 days</option><option value="30">30 days</option></select></label>
+            </div>
+            <div id="pibPanel" class="pib-panel" hidden>
+              <div class="pib-panel-head"><div><strong>Economy &amp; Policy</strong><p>Government of India press releases from PIB, filtered for financial and business relevance. Not NSE/BSE company-price news.</p></div>
+              <button type="button" id="pibReload" class="outline">Refresh PIB</button></div>
+              <p id="pibStatus" role="status" aria-live="polite">Open this tab to load official economy and policy releases.</p>
+              <small>Source: <a href="https://www.pib.gov.in/" target="_blank" rel="noopener noreferrer">Press Information Bureau ↗</a>. Verify original statements and prominently acknowledge PIB before publication.</small>
             </div>
             <div id="marketauxPanel" class="marketaux-panel" hidden><div class="marketaux-panel-head"><div><strong>Indian Markets</strong><p>Marketaux publisher headlines · India-linked financial news. Subject to approved usage rights.</p></div><button type="button" id="marketauxLoad" class="outline" disabled>Checking access…</button></div>
               <p id="marketauxStatus" role="status" aria-live="polite">Checking access and your manager session…</p>
@@ -97,6 +104,7 @@
                 <p><a href="https://www.marketaux.com/tos" target="_blank" rel="noopener noreferrer">Review Marketaux terms ↗</a></p>
               </details>
               <details id="marketauxAuth" class="marketaux-auth"><summary>Manager sign-in <small>(once every 7 days)</small></summary><div><input type="password" id="marketauxManagerKey" autocomplete="off" placeholder="SignalDesk manager key" aria-label="SignalDesk manager key"><button type="button" id="marketauxConnect" class="outline">Sign in once</button></div><small>The key stays on Netlify. This browser receives a secure, seven-day session cookie.</small></details>
+              <p class="marketaux-alternative">Want relevant updates without a separate news subscription? <button type="button" id="openPibAlternative" class="marketaux-pib-link">Explore Economy &amp; Policy (PIB) →</button></p>
               <div id="marketauxSignedIn" class="marketaux-signed-in" hidden><span><icon aria-hidden="true">✓</icon> Manager session active · remembered for up to 7 days</span><button type="button" id="marketauxLogout" class="marketaux-signout">Sign out</button></div></div>
             <input id="search" type="search" placeholder="Search news or topics" aria-label="Search official and market news"><p id="feedAlertStatus" class="feed-alert-status" role="status" aria-live="polite" hidden></p>
             <div id="news" class="news-items" aria-live="polite"><div class="skeleton">Fetching official releases…</div></div>
@@ -109,7 +117,7 @@
               <summary>Source health <span class="muted-dot">●</span></summary>
               <div id="sources"><p class="muted">Checking sources…</p></div>
             </details>
-            <div class="data-note">RBI/SEBI feeds are free official sources. Marketaux is a separate optional trial, available only after confirming usage rights. MarketsMojo content is not used.</div>
+            <div class="data-note">RBI/SEBI and PIB provide official public updates. Marketaux remains optional, subject to commercial-use authorisation. All sources require editorial verification before publishing.</div>
           </aside>
         </div>
       </section>
