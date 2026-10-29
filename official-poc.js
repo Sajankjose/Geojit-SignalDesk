@@ -113,51 +113,111 @@ function visibleStories(){
 function marketauxNotice(message,warning=false){
  const el=$("marketauxStatus");el.textContent=message;el.classList.toggle("warning",warning);
 }
+let marketauxSession=false, marketauxAuthPending=false;
+function updateMarketauxAuthUI(){
+ $("marketauxSignedIn").hidden=!marketauxSession;
+ $("marketauxAuth").hidden=marketauxSession;
+ if(marketauxSession)$("marketauxAuth").open=false;
+ $("marketauxLoad").disabled=marketauxLoading||marketauxAuthPending;
+}
 function showMarketauxPanel(){
  $("marketauxPanel").hidden=source!=="Marketaux";
- $("marketauxLoad").disabled=marketauxLoading;
- $("marketauxAuth").open=source==="Marketaux"&&!managerKey;
+ updateMarketauxAuthUI();
+}
+async function createMarketauxSession(key){
+ const r=await fetch("/.netlify/functions/marketaux-session",{
+  method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",
+  cache:"no-store",body:JSON.stringify({key})
+ });
+ let result;try{result=await r.json()}catch{throw Error("The manager session service did not respond correctly.")}
+ if(!r.ok||!result.authenticated)throw Error(result.error||"Could not sign in to Indian Markets.");
+ marketauxSession=true;updateMarketauxAuthUI();
+ return true;
+}
+async function restoreMarketauxSession(){
+ if(marketauxAuthPending)return marketauxSession;
+ marketauxAuthPending=true;updateMarketauxAuthUI();
+ try{
+  const r=await fetch("/.netlify/functions/marketaux-session",{credentials:"same-origin",cache:"no-store"});
+  let data;try{data=await r.json()}catch{throw Error("The manager session service is unavailable.")}
+  marketauxSession=!!(r.ok&&data.authenticated);
+  // If Studio already has a valid key in this tab, exchange it for a cookie once.
+  if(!marketauxSession&&managerKey){
+   try{await createMarketauxSession(managerKey)}
+   catch{marketauxSession=false}
+  }
+  updateMarketauxAuthUI();
+  if(!marketauxSession){
+   $("marketauxAuth").open=true;
+   marketauxNotice("Sign in once to view Indian Markets. The secure session is remembered for up to seven days.");
+  }
+  return marketauxSession;
+ }catch(e){
+  marketauxSession=false;updateMarketauxAuthUI();$("marketauxAuth").open=true;
+  marketauxNotice("Could not restore your session: "+String(e.message||e),true);
+  return false;
+ }finally{marketauxAuthPending=false;updateMarketauxAuthUI()}
 }
 async function connectMarketauxManager(){
- const key=$("marketauxManagerKey").value.trim();if(!key){marketauxNotice("Enter your SignalDesk manager key first.",true);return}
- $("marketauxConnect").disabled=true;
+ const key=$("marketauxManagerKey").value.trim();
+ if(!key){marketauxNotice("Enter your manager access key once to continue.",true);return}
+ $("marketauxConnect").disabled=true;$("marketauxConnect").textContent="Signing in…";
  try{
-  const r=await fetch("/.netlify/functions/ai-status",{headers:{"x-manager-key":key},cache:"no-store"});
-  const obj=await r.json();
-  if(!r.ok||!obj.ready)throw Error(obj.error||"Manager connection unavailable");
-  managerKey=key;try{sessionStorage.setItem("signaldesk:manager:key",managerKey)}catch{}
-  $("marketauxManagerKey").value="";$("marketauxAuth").open=false;
-  updateComposeConnection();
-  marketauxNotice("Manager connected. You can now check whether the Marketaux trial is enabled.");
- }catch(e){marketauxNotice(String(e.message||e),true)}
- finally{$("marketauxConnect").disabled=false}
+  await createMarketauxSession(key);
+  $("marketauxManagerKey").value="";
+  marketauxNotice("Signed in for up to 7 days on this browser. No repeated manager key entry required.");
+  await loadMarketaux();
+ }catch(e){
+  marketauxSession=false;updateMarketauxAuthUI();$("marketauxAuth").open=true;
+  marketauxNotice(String(e.message||e),true);
+ }finally{$("marketauxConnect").disabled=false;$("marketauxConnect").textContent="Sign in once"}
+}
+async function logoutMarketaux(){
+ try{await fetch("/.netlify/functions/marketaux-session",{method:"DELETE",credentials:"same-origin",cache:"no-store"})}
+ catch{}
+ marketauxSession=false;marketauxStories=[];marketauxLoadedAt=0;
+ // A separate AI session may still be active in this tab. Signing out of
+ // Marketaux does not revoke the AI manager key.
+ updateMarketauxAuthUI();$("marketauxAuth").open=true;
+ marketauxNotice("Signed out of Indian Markets on this browser.");
+ renderHealth();renderStories();
+}
+async function activateMarketaux(){
+ if(source!=="Marketaux")return;
+ const connected=await restoreMarketauxSession();
+ if(connected&&source==="Marketaux")await loadMarketaux();
 }
 async function loadMarketaux(){
- if(marketauxLoading)return;
- if(!managerKey){$("marketauxAuth").open=true;marketauxNotice("Connect your manager key above before loading the Indian-market trial.",true);return}
- // Avoid burning the 100/day trial limit through repeated clicks.
+ if(marketauxLoading||marketauxAuthPending)return;
+ if(!marketauxSession){
+  const restored=await restoreMarketauxSession();
+  if(!restored)return;
+ }
  if(marketauxLoadedAt&&Date.now()-marketauxLoadedAt<45*60_000){
-  marketauxNotice("Using the previously loaded India-linked stories. Load again after 45 minutes to conserve your free quota.");
+  marketauxNotice("Showing previously loaded India-linked stories. The free-plan request limit is protected by a 45-minute cooldown.");
   renderStories();return;
  }
- marketauxLoading=true;$("marketauxLoad").disabled=true;$("marketauxLoad").textContent="Checking…";
+ marketauxLoading=true;updateMarketauxAuthUI();$("marketauxLoad").textContent="Loading…";
  try{
   const ctrl=new AbortController(),timeout=setTimeout(()=>ctrl.abort(),16000);
-  let r;try{r=await fetch("/.netlify/functions/marketaux-news",{headers:{"x-manager-key":managerKey},signal:ctrl.signal,cache:"no-store"})}
-  finally{clearTimeout(timeout)}
+  let r;try{r=await fetch("/.netlify/functions/marketaux-news",{
+   credentials:"same-origin",signal:ctrl.signal,cache:"no-store"
+  })}finally{clearTimeout(timeout)}
   let data;try{data=await r.json()}catch{throw Error("Marketaux service returned an unreadable response.")}
   if(!r.ok){
-   if(r.status===401){managerKey="";try{sessionStorage.removeItem("signaldesk:manager:key")}catch{}$("marketauxAuth").open=true;updateComposeConnection()}
-   throw Error(data.error||"Marketaux is not available yet.");
+   if(r.status===401){
+    marketauxSession=false;updateMarketauxAuthUI();$("marketauxAuth").open=true;
+   }
+   throw Error(data.error||"Indian Markets is unavailable.");
   }
   if(!Array.isArray(data.stories))throw Error("Unexpected Marketaux response.");
   marketauxStories=data.stories;marketauxLoadedAt=Date.now();
   marketauxNotice(marketauxStories.length?
-    "Received "+marketauxStories.length+" India-linked publisher stories via Marketaux. Source reports are unverified; confirm all market facts and usage rights.":
-    "Marketaux is connected, but returned no qualifying India-linked articles in the last seven days.");
+   "Loaded "+marketauxStories.length+" India-linked publisher reports. Check the original and any reuse rights before drafting.":
+   "Connected, but no qualifying India-linked stories returned for the past week.");
   renderStories();renderHealth();
  }catch(e){marketauxNotice(String(e.message||e),true)}
- finally{marketauxLoading=false;$("marketauxLoad").disabled=false;$("marketauxLoad").textContent="Load 3 stories"}
+ finally{marketauxLoading=false;updateMarketauxAuthUI();$("marketauxLoad").textContent="Load 3 stories"}
 }
 function renderHealth(){
  $("total").textContent=payload.stories.length+marketauxStories.length;
@@ -527,10 +587,11 @@ $("clearAlerts").addEventListener("click",()=>{
 document.addEventListener("click",e=>{if(alertsOpen&&!e.target.closest(".alert-anchor"))setAlertsOpen(false)});
 $("marketauxLoad").addEventListener("click",loadMarketaux);
  $("marketauxConnect").addEventListener("click",connectMarketauxManager);
+$("marketauxLogout").addEventListener("click",logoutMarketaux);
  $("sourceTabs").addEventListener("click",e=>{
  const b=e.target.closest("button[data-source]");if(!b)return;
  source=b.dataset.source;document.querySelectorAll("button[data-source]").forEach(x=>x.classList.toggle("selected",x===b));
- showMarketauxPanel();renderStories();
+ showMarketauxPanel();renderStories();if(source==="Marketaux")activateMarketaux();
 });
 $("window").addEventListener("change",e=>{windowDays=Number(e.target.value);renderStories()});
 $("search").addEventListener("input",e=>{search=e.target.value.trim().toLowerCase();renderStories()});
