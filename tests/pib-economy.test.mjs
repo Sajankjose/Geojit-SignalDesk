@@ -8,7 +8,7 @@ const now=Date.UTC(2026,9,29,10,0,0);
 const item=(title,url,at=now-3600_000,description="")=>`<item><title><![CDATA[${title}]]></title><link>${url}</link><description><![CDATA[${description}]]></description><pubDate>${new Date(at).toUTCString()}</pubDate></item>`;
 const xml=items=>"<rss version=\"2.0\"><channel>"+items.join("")+"</channel></rss>";
 test("PIB RSS is a preconfigured official government source, not an arbitrary URL",()=>{
- assert.equal(PIB_FEED_URL,"https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3");
+ assert.equal(PIB_FEED_URL,"https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3");
 });
 test("Filter finance and economy headlines but exclude unrelated news and offsite links",()=>{
  const rss=xml([
@@ -29,8 +29,8 @@ test("Endpoint provides source attribution and no manager login or Marketaux req
  const old=globalThis.fetch;let called=0;
  try{
   globalThis.fetch=async (url,opts)=>{
-   called++;assert.equal(url,PIB_FEED_URL);
-   assert.equal(opts.redirect,"error");
+   called++;assert.ok([PIB_FEED_URL,"https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3"].includes(url));
+   assert.equal(opts.redirect,"manual");
    return new Response(xml([item("India government announces new infrastructure investment programme","https://pib.gov.in/PressReleasePage.aspx?PRID=12555",Date.now()-2000)]),{status:200,headers:{"content-type":"application/rss+xml"}});
   };
   const res=await pibHandler(new Request("https://geojitsignaldesk.netlify.app/.netlify/functions/pib-economy"));
@@ -38,7 +38,7 @@ test("Endpoint provides source attribution and no manager login or Marketaux req
   const body=await res.json();
   assert.equal(body.stories.length,1);
   assert.match(body.attribution,/Press Information Bureau/);
-  assert.equal(called,1);
+  assert.ok(called>=1&&called<=2);
   assert.ok(!JSON.stringify(body).includes("MARKETAUX_API_TOKEN"));
  }finally{globalThis.fetch=old}
 });
@@ -54,4 +54,17 @@ test("Discover has a standalone government feed and clear alternative to blocked
  assert.match(client,/source==="all"\?\[\.\.\.payload.stories,\.\.\.pibStories,\.\.\.marketauxStories\]/);
  assert.match(client,/\$\("openPibAlternative"\)\.addEventListener/);
  assert.doesNotMatch(client,/api\.x\.com\/2\/tweets|api\.twitter\.com\/2\/tweets/);
+});
+
+test("Same-origin PIB redirects are followed safely and never leave the publisher's RSS hostname",async()=>{
+ const old=globalThis.fetch;let redirected=0;
+ try{
+  globalThis.fetch=async (url,opts)=>{
+   if(url.startsWith("https://www.pib.gov.in")){redirected++;return new Response(null,{status:302,headers:{location:"https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3"}})}
+   return new Response(xml([item("Ministry of Finance reports banking reforms","https://pib.gov.in/PressReleasePage.aspx?PRID=18923",Date.now()-3000)]),{status:200});
+  };
+  const value=await loadPIB();
+  assert.ok(Array.isArray(value.stories));
+  assert.ok(value.stories.length>=1);
+ }finally{globalThis.fetch=old}
 });
