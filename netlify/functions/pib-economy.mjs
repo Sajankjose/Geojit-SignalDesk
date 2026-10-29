@@ -20,9 +20,9 @@ export function preparePIBStories(xml,now=Date.now()){
  // use retrieval time for sorting/filtering while explicitly indicating that
  // it is NOT the original release time. Never imply newly published.
  const seenAt=new Date(now).toUTCString();
- const rssWithDates=xml.replace(/(<item(?:\\s[^>]*)?>)([\\s\\S]*?)(<\\/item>)/gi,
+ const rssWithDates=xml.replace(/(<item(?:\s[^>]*)?>)([\s\S]*?)(<\/item>)/gi,
   (full,open,inside,close)=>open+inside+
-   (/<pubDate(?:\\s[^>]*)?>/i.test(inside)?"":"<pubDate>"+seenAt+"</pubDate>")+close);
+   (/<pubDate(?:\s[^>]*)?>/i.test(inside)?"":"<pubDate>"+seenAt+"</pubDate>")+close);
  const items=parseRSS(rssWithDates,{name:"PIB",official:true});
  const seen=new Set(),stories=[];
  for(const row of items){
