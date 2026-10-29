@@ -1,7 +1,7 @@
 name: Free official news POC checks
 on:
   push:
-    branches: [fix-pib-rss-redirects, main]
+    branches: [pib-undated-rss-items, main]
   pull_request:
     branches: [main]
 permissions:

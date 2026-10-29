@@ -68,3 +68,22 @@ test("Same-origin PIB redirects are followed safely and never leave the publishe
   assert.ok(value.stories.length>=1);
  }finally{globalThis.fetch=old}
 });
+
+test("Actual PIB-style title/link-only RSS items are retained and explicitly marked undated",()=>{
+ const current=Date.UTC(2026,9,29,13,0,0);
+ const raw='<rss version="2.0"><channel><title>Press Information Bureau</title>'+
+  '<item><title>Ministry of Finance announces new banking measures</title><link>https://pib.gov.in/PressReleaseIframePage.aspx?PRID=2222222</link></item>'+
+  '<item><title>Regional arts event held today</title><link>https://pib.gov.in/PressReleaseIframePage.aspx?PRID=2222221</link></item></channel></rss>';
+ const result=preparePIBStories(raw,current);
+ assert.equal(result.length,1);
+ assert.equal(result[0].provider,"PIB RSS");
+ assert.equal(result[0].publishedAtEstimated,true);
+ assert.equal(result[0].publishedAt,new Date(current).toISOString());
+ assert.match(result[0].rankBasis,/NOT original publication/);
+ assert.ok(result[0].priority<=65);
+});
+test("Frontend does not misstate RSS retrieval time as PIB story publication time",()=>{
+ assert.match(client,/Publication date not provided by PIB/);
+ assert.match(client,/Publication date not supplied/);
+ assert.match(client,/publishedAtEstimated:!!s\.publishedAtEstimated/);
+});

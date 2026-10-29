@@ -15,7 +15,15 @@ const trusted=raw=>{
  try{const url=new URL(raw);return url.protocol==="https:"&&["pib.gov.in","www.pib.gov.in"].includes(url.hostname.toLowerCase())}catch{return false}
 };
 export function preparePIBStories(xml,now=Date.now()){
- const items=parseRSS(xml,{name:"PIB",official:true});
+ // PIB RSS currently supplies title + link but omits item publication dates.
+ // The shared parser intentionally drops undated items. For THIS source only,
+ // use retrieval time for sorting/filtering while explicitly indicating that
+ // it is NOT the original release time. Never imply newly published.
+ const seenAt=new Date(now).toUTCString();
+ const rssWithDates=xml.replace(/(<item(?:\s[^>]*)?>)([\s\S]*?)(<\/item>)/gi,
+  (full,open,inside,close)=>open+inside+
+   (/<pubDate(?:\s[^>]*)?>/i.test(inside)?"":"<pubDate>"+seenAt+"</pubDate>")+close);
+ const items=parseRSS(rssWithDates,{name:"PIB",official:true});
  const seen=new Set(),stories=[];
  for(const row of items){
   if(!trusted(row.url)||!row.title||row.title.length<12||skip.test(row.title))continue;
@@ -26,12 +34,12 @@ export function preparePIBStories(xml,now=Date.now()){
   if(seen.has(key))continue;
   seen.add(key);
   const base={...row,sourceId:"pib-economy",sourceName:"PIB · Economy & policy",
-   publisher:"PIB",provider:"PIB RSS",official:true,category:"Economy & policy",
+   publisher:"PIB",provider:"PIB RSS",official:true,category:"Economy & policy",publishedAtEstimated:true,
    snippet:row.snippet.slice(0,280),rightsNote:"PIB own-content reuse: source attribution required. Check third-party materials separately."};
   const ranked=rankOfficialStory(base,now);
-  stories.push({...base,priority:Math.min(85,ranked.priority),impact:ranked.impact,
+  stories.push({...base,priority:Math.min(65,ranked.priority),impact:"low",
    category:"Economy & policy",reason:"Government press release mentioning finance, economy, business or industry. Check relevance to investors and read the original.",
-   rankBasis:"Keyword relevance and recency. May include general policy news; not market-impact advice.",
+   rankBasis:"Keyword relevance only. PIB RSS does not supply publication dates; the recorded timestamp is feed retrieval time, NOT original publication time.",
    suggestedHashtags:suggestedHashtags(base)});
  }
  return stories.sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt)).slice(0,35);
@@ -70,7 +78,7 @@ export async function loadPIB(now=Date.now()){
   const stories=preparePIBStories(xml,now);
   const result={source:"PIB · Government of India",sourceUrl:"https://www.pib.gov.in/",
    stories,count:stories.length,checkedAt:new Date(now).toISOString(),windowDays:30,
-   notice:"Government press releases filtered by economy, financial and business topics. Not company-specific market coverage.",
+   notice:"Government press releases filtered by economy, financial and business topics. PIB RSS does not provide item publication dates; listed items were seen in the feed, not necessarily published today.",
    attribution:"Source: Press Information Bureau, Government of India. Open and verify original before publishing."};
   cache={time:now,result};return {...result,cached:false};
  })();

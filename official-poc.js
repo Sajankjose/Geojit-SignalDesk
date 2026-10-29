@@ -314,7 +314,7 @@ function renderStories(){
   if(existing)top.append(el("span","pill "+(existing.status==="Published"?"":"secondary"),existing.status));
   const title=el("h3","card-title",s.title),summary=el("p","story-summary",s.snippet||"Open the original publisher source for details.");
   const meta=el("div","story-meta");
-  append(meta,el("span","",dateFmt(s.publishedAt,false,s.dateOnly)));
+  append(meta,el("span","",s.publishedAtEstimated?"Publication date not provided by PIB":dateFmt(s.publishedAt,false,s.dateOnly)));
   const rationale=el("p","why-relevant",s.reason||"Relevance is a provisional editorial estimate; verify the primary source.");
   const actions=el("div","story-buttons"),link=el("a","outline","Source ↗"),btn=el("button","outline dark",existing?"Continue draft →":"Create post →");
   link.href=validUrl(s.url)||"#";link.target="_blank";link.rel="noopener noreferrer";
@@ -351,7 +351,7 @@ function startDraft(s){
  if(!s?.id||!validUrl(s.url))return;
  if(!workspace.drafts[s.id]){
   const ts=new Date().toISOString();
-  workspace.drafts[s.id]={id:s.id,source:{id:s.id,title:s.title,snippet:s.snippet||"",url:s.url,publisher:s.publisher,category:s.category||"Official update",publishedAt:s.publishedAt,dateOnly:!!s.dateOnly,provider:s.provider||"Official RSS",suggestedHashtags:defaultTags(s)},
+  workspace.drafts[s.id]={id:s.id,source:{id:s.id,title:s.title,snippet:s.snippet||"",url:s.url,publisher:s.publisher,category:s.category||"Official update",publishedAt:s.publishedAt,dateOnly:!!s.dateOnly,publishedAtEstimated:!!s.publishedAtEstimated,provider:s.provider||"Official RSS",suggestedHashtags:defaultTags(s)},
    variants:{news:starter(s),insight:""},variant:"news",status:"Draft",verified:false,sourceLink:false,publishedText:"",xUrl:"",risks:[],hashtags:defaultTags(s),suggestedHashtags:defaultTags(s),createdAt:ts,updatedAt:ts};
   persist();
  }
@@ -545,7 +545,7 @@ function renderStudio(){
   opt.value=x.id;opt.selected=x.id===selectedId;sel.append(opt);
  }
  $("studioStoryTitle").textContent=d.source.title;
- $("studioSourceMeta").textContent=d.source.publisher+" · "+dateFmt(d.source.publishedAt,true,d.source.dateOnly)+" · "+d.source.category;
+ $("studioSourceMeta").textContent=d.source.publisher+" · "+(d.source.publishedAtEstimated?"Publication date not supplied":dateFmt(d.source.publishedAt,true,d.source.dateOnly))+" · "+d.source.category;
  $("studioSourceLink").href=validUrl(d.source.url)||"#";
  $("studioSourceLink").hidden=!validUrl(d.source.url);
  $("manualSourceEdit").hidden=!d.manual;
