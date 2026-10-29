@@ -232,3 +232,11 @@ footer{margin-top:35px;border-top:1px solid var(--line);padding:18px 0;color:#99
 .evidence-icon{font-size:15px;color:#b4773c;line-height:1.25}
 .context-notice{border-left:3px solid #9e8abe;background:#f5f0fb;border-radius:0 8px 8px 0;color:#65517d;font-size:11px;line-height:1.75;padding:10px 13px;margin:0 0 14px}
 .context-notice[hidden]{display:none}
+
+
+/* Friendly inline feedback for article links that need human-supplied facts. */
+.compose-link-help{margin:8px 0 12px;font-size:11px;line-height:1.75;color:#8a5b3a;background:#fff7e9;border-left:3px solid #e6ab6a;border-radius:0 8px 8px 0;padding:9px 12px}
+.compose-link-help[hidden]{display:none}
+.compose-fallback[open]{border-color:#d9c6a9;background:#fffaf2}
+.compose-fallback summary small{font-size:10px;font-weight:500;color:#9a7e60}
+.compose-credentials summary small{font-weight:700;color:#4c7a65}
