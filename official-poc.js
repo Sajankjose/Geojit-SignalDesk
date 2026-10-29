@@ -182,6 +182,34 @@ function startDraft(s){
 }
 
 let composerMode="link",composeBusy=false;
+const previewDomains=["rbi.org.in","sebi.gov.in","pib.gov.in","nseindia.com","bseindia.com","reuters.com","business-standard.com","livemint.com","moneycontrol.com","thehindubusinessline.com","economictimes.indiatimes.com","cnbctv18.com"];
+function canPreviewUrl(raw){
+ try{
+  const u=new URL(raw);
+  const host=u.hostname.toLowerCase();
+  return u.protocol==="https:"&&!u.username&&!u.password&&previewDomains.some(d=>host===d||host.endsWith("."+d));
+ }catch{return false}
+}
+function updateComposeConnection(){
+ $("composeConnectionState").textContent=managerKey?"Connected for this tab ✓":"(connect once per browser tab)";
+}
+function showManualLinkHelp(message){
+ $("composeFallback").open=true;
+ $("composeLinkHelp").hidden=false;$("composeLinkHelp").textContent=message;
+}
+function updateComposeLinkHelp(){
+ const raw=$("composeURL").value.trim();
+ if(!raw){$("composeLinkHelp").hidden=true;return}
+ const url=validUrl(raw);
+ if(!url){$("composeLinkHelp").hidden=false;$("composeLinkHelp").textContent="Enter a complete HTTPS news link.";return}
+ if(canPreviewUrl(url)){
+  $("composeLinkHelp").hidden=false;
+  $("composeLinkHelp").textContent="Supported source: SignalDesk can try to retrieve its headline and short description. If blocked, paste the facts below.";
+ }else{
+  showManualLinkHelp("This publisher, including Yahoo Finance, is link-only in SignalDesk. Paste the headline and key facts below; the original URL will be kept for attribution. No automated article extraction.");
+ }
+}
+
 function composeNotice(message,failed=false){
  const e=$("composeStatus");e.textContent=message;e.classList.toggle("failed",failed);
 }
@@ -197,18 +225,23 @@ function setComposerMode(mode){
 }
 async function connectComposerAI(){
  const candidate=$("composeManagerKey").value.trim();
- if(!candidate){composeNotice("Enter the manager access key to connect AI.",true);return}
- $("composeConnect").disabled=true;
+ if(!candidate){
+  composeNotice(managerKey?"AI is already connected for this browser tab.":"Enter your manager access key to connect AI.",!managerKey);
+  updateComposeConnection();
+  return !!managerKey;
+ }
+ $("composeConnect").disabled=true;$("composeConnect").textContent="Checking…";
  try{
   const response=await fetch("/.netlify/functions/ai-status",{headers:{"x-manager-key":candidate},cache:"no-store"});
-  const result=await response.json();
-  if(!response.ok||!result.ready)throw Error(result.error||"AI is not configured in Netlify");
+  let result;try{result=await response.json()}catch{throw Error("AI connection check did not return a valid response.")}
+  if(!response.ok||!result.ready)throw Error(result.error||"The AI service is not configured.");
   managerKey=candidate;
   try{sessionStorage.setItem("signaldesk:manager:key",managerKey)}catch{}
   $("composeManagerKey").value="";$("composeCredentials").open=false;
-  composeNotice("AI connected. You can now generate two tweet variants.");
- }catch(e){composeNotice(String(e.message||e)+". Manual drafting is still available.",true)}
- finally{$("composeConnect").disabled=false}
+  composeNotice("AI connected. You can generate two editable versions.");
+  updateComposeConnection();return true;
+ }catch(e){composeNotice("Could not connect AI: "+String(e.message||e)+". Check Netlify settings or try again.",true);return false}
+ finally{$("composeConnect").disabled=false;$("composeConnect").textContent="Connect"}
 }
 const getHost=url=>{try{return new URL(url).hostname.replace(/^www\./,"")}catch{return "User source"}};
 async function getComposerStory(useAI){
@@ -232,18 +265,41 @@ async function getComposerStory(useAI){
  if(fallbackTitle.length>=12){
   return {title:fallbackTitle,snippet:fallbackText,url,publisher:getHost(url),publishedAt:now,dateOnly:true};
  }
- if(!managerKey)throw Error("Connect AI to retrieve a supported news link, or expand 'If the page can't be read' and paste the headline.");
+ if(!canPreviewUrl(url)){
+  showManualLinkHelp("Automatic preview is unavailable for this publisher. Paste the news headline and key facts here; the link stays attached to the draft.");
+  throw Error("This publisher cannot be previewed automatically. Paste the headline and relevant facts in the expanded fields.");
+ }
+ if(!managerKey)throw Error("For a supported link preview, connect your manager key above or paste the headline and facts manually.");
  const response=await fetch("/.netlify/functions/news-preview",{method:"POST",headers:{"Content-Type":"application/json","x-manager-key":managerKey},body:JSON.stringify({url}),cache:"no-store"});
  let result;try{result=await response.json()}catch{throw Error("This publisher did not return a usable preview. Paste the headline and a few facts instead.")}
- if(!response.ok)throw Error(result.error||"Could not retrieve source preview. Paste the headline instead.");
+ if(!response.ok){
+  if(response.status===401){managerKey="";try{sessionStorage.removeItem("signaldesk:manager:key")}catch{}updateComposeConnection();$("composeCredentials").open=true}
+  showManualLinkHelp(result.error||"This source blocked its preview. Paste the headline and key facts instead.");
+  throw Error(result.error||"This source could not be previewed. Paste the headline and key facts instead.");
+ }
  return {title:result.title,snippet:result.snippet||"",url,publisher:result.publisher||getHost(url),publishedAt:now,dateOnly:true};
 }
 async function submitComposer(useAI){
  if(composeBusy)return;
+ // Validate the news input before requesting credentials or calling the model.
+ if(composerMode==="link"){
+  const url=$("composeURL").value.trim();
+  if(!validUrl(url)){composeNotice("Enter a complete HTTPS news URL first.",true);$("composeURL").focus();return}
+  if(!canPreviewUrl(url)&&$("composeHeadline").value.trim().length<12){
+   showManualLinkHelp("This source is link-only. Paste its headline and key facts; then Generate will use those facts without scraping the article.");
+   composeNotice("This publisher is not supported for automatic previews. Add the headline and key facts below, then try again.",true);
+   $("composeHeadline").focus();return;
+  }
+ }
  if(useAI&&!managerKey){
-  $("composeCredentials").open=true;
-  composeNotice("Connect your manager access key first. The OpenAI API key stays in Netlify.",true);
-  $("composeManagerKey").focus();return;
+  if($("composeManagerKey").value.trim()){
+   const connected=await connectComposerAI();
+   if(!connected)return;
+  }else{
+   $("composeCredentials").open=true;
+   composeNotice("Enter your manager access key here, then click Generate again. No need to open Studio.",true);
+   $("composeManagerKey").focus();return;
+  }
  }
  composeBusy=true;$("composeGenerate").disabled=true;$("composeManual").disabled=true;
  composeNotice(useAI?"Reading the source and preparing your draft…":"Creating a manual draft…");
@@ -379,7 +435,8 @@ async function generate(){
 function sourceURLAccepted(raw){
  try{const u=new URL(raw);return ["x.com","www.x.com","twitter.com","www.twitter.com"].includes(u.hostname)&&/^\/[a-zA-Z0-9_]+\/status\/\d+\/?$/.test(u.pathname)?u.href:null}catch{return null}
 }
-$("composeToggle").addEventListener("click",()=>composerOpen($("composePanel").hidden));
+$("composeToggle").addEventListener("click",()=>{composerOpen($("composePanel").hidden);updateComposeConnection()});
+$("composeURL").addEventListener("input",updateComposeLinkHelp);
 $("composeClose").addEventListener("click",()=>composerOpen(false));
 document.querySelectorAll("button[data-compose-mode]").forEach(b=>b.addEventListener("click",()=>setComposerMode(b.dataset.composeMode)));
 $("composeConnect").addEventListener("click",connectComposerAI);
@@ -484,6 +541,7 @@ $("saveManagerKey").addEventListener("click",async()=>{
 });
 $("aiGenerate").addEventListener("click",generate);
 const initialView=location.hash.replace("#","");
+updateComposeConnection();
 updateNavCounts();navigate(initialView,false);refresh();
 setInterval(()=>{if(!document.hidden)refresh()},5*60*1000);
 })();
