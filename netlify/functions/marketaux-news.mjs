@@ -2,19 +2,9 @@
 // Strictly manager-gated and disabled until permitted internal commercial use
 // of this API/data has been confirmed in MARKET AUX's licence/terms.
 // Never expose the API token to client, logs, source code or public HTML.
-import {timingSafeEqual} from "node:crypto";
+import {marketauxAuthenticated,sameOrigin} from "./lib/marketaux-auth.mjs";
 import {rankOfficialStory,suggestedHashtags} from "./lib/editorial.mjs";
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});
-function authorised(request){
- const expected=process.env.MANAGER_ACCESS_KEY||"",got=request.headers.get("x-manager-key")||"";
- const a=Buffer.from(expected),b=Buffer.from(got);
- return !!expected&&!!got&&a.length===b.length&&timingSafeEqual(a,b);
-}
-function acceptedOrigin(request){
- const origin=request.headers.get("origin");
- if(!origin)return true;
- try{return new URL(origin).origin===new URL(request.url).origin}catch{return false}
-}
 const validUrl=value=>{
  try{const u=new URL(value);return u.protocol==="https:"&&!u.username&&!u.password&&u.href.length<=1500?u.href:""}catch{return ""}
 };
@@ -82,8 +72,8 @@ export async function fetchMarketaux(now=Date.now()){
 }
 export default async function handler(request){
  if(request.method!=="GET")return json({error:"GET required"},405);
- if(!acceptedOrigin(request))return json({error:"Origin not allowed"},403);
- if(!authorised(request))return json({error:"Connect your manager key in SignalDesk before viewing Indian Markets."},401);
+ if(!sameOrigin(request))return json({error:"Origin not allowed"},403);
+ if(!marketauxAuthenticated(request))return json({error:"Your Indian Markets session has expired. Sign in once to resume."},401);
  if(process.env.MARKETAUX_USAGE_APPROVED!=="true")
   return json({enabled:false,error:"Marketaux feed is prepared but disabled pending confirmation that Geojit may use this API/data in an internal commercial editorial tool. Once authorised, set MARKETAUX_USAGE_APPROVED to true in Netlify Functions production settings and redeploy."},403);
  if(!process.env.MARKETAUX_API_TOKEN)return json({enabled:false,error:"MARKETAUX_API_TOKEN is not available to the Netlify Functions production deployment. Confirm scope and redeploy."},503);
