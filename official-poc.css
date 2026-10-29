@@ -258,3 +258,11 @@ footer{margin-top:35px;border-top:1px solid var(--line);padding:18px 0;color:#99
 .marketaux-auth input{min-width:0;flex:1;background:#fff;border:1px solid #d9d0e7;border-radius:8px;padding:10px 12px;font-size:12px}
 .marketaux-auth small{font-size:10px;color:#817797;line-height:1.6}
 @media(max-width:670px){.marketaux-panel-head{flex-direction:column;align-items:stretch}.marketaux-panel-head button{width:100%}.marketaux-auth>div{flex-direction:column}}
+
+
+/* Remembered, HttpOnly seven-day Indian Markets session. */
+.marketaux-signed-in{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:9px;border-top:1px solid #e7e0f2;margin-top:12px;padding-top:11px;color:#277654;font-size:11px;font-weight:750}
+.marketaux-signed-in icon{font-style:normal;background:#e2f3e9;color:#178156;border-radius:50%;padding:1px 4px;margin-right:5px}
+.marketaux-signout{background:transparent;border:1px solid #d6cfe0;color:#6c627c;border-radius:7px;padding:5px 10px;font-size:10px;font-weight:750}
+.marketaux-signout:hover{background:#f1edf7}
+.marketaux-auth summary small{font-size:10px;font-weight:500;color:#796b94}
