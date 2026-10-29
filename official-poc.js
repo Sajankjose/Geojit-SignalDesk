@@ -113,12 +113,27 @@ function visibleStories(){
 function marketauxNotice(message,warning=false){
  const el=$("marketauxStatus");el.textContent=message;el.classList.toggle("warning",warning);
 }
-let marketauxSession=false, marketauxAuthPending=false;
+let marketauxSession=false, marketauxAuthPending=false,marketauxReadiness="unknown";
+const marketauxReady=()=>marketauxSession&&marketauxReadiness==="ready";
 function updateMarketauxAuthUI(){
  $("marketauxSignedIn").hidden=!marketauxSession;
  $("marketauxAuth").hidden=marketauxSession;
  if(marketauxSession)$("marketauxAuth").open=false;
- $("marketauxLoad").disabled=marketauxLoading||marketauxAuthPending;
+ const ready=marketauxReady();
+ $("marketauxLoad").disabled=marketauxLoading||marketauxAuthPending||!ready;
+ $("marketauxLoad").textContent=ready?"Load 3 stories":marketauxAuthPending?"Checking access…":
+  marketauxReadiness==="approval_required"?"Awaiting permission":
+  marketauxReadiness==="token_missing"?"Token not configured":"Sign in to load";
+ $("marketauxSetup").hidden=marketauxReadiness!=="approval_required"&&marketauxReadiness!=="token_missing";
+ if(marketauxReadiness==="approval_required"&&source==="Marketaux")$("marketauxSetup").open=true;
+}
+function showMarketauxReadiness(){
+ if(!marketauxSession)return;
+ if(marketauxReadiness==="approval_required")marketauxNotice("Marketaux connection: permission pending. Your manager session is active, but no API requests will be made until the required commercial-use approval is confirmed. See activation steps below.",true);
+ else if(marketauxReadiness==="token_missing")marketauxNotice("Marketaux token missing from the deployed Netlify Functions production environment. Confirm the token scope and redeploy.",true);
+ else if(marketauxReadiness==="ready")marketauxNotice("Marketaux is configured and ready. News loads automatically when you open this tab; refreshes are limited to protect the free quota.");
+ else marketauxNotice("Checking Marketaux access…");
+ updateMarketauxAuthUI();
 }
 function showMarketauxPanel(){
  $("marketauxPanel").hidden=source!=="Marketaux";
@@ -131,7 +146,9 @@ async function createMarketauxSession(key){
  });
  let result;try{result=await r.json()}catch{throw Error("The manager session service did not respond correctly.")}
  if(!r.ok||!result.authenticated)throw Error(result.error||"Could not sign in to Indian Markets.");
- marketauxSession=true;updateMarketauxAuthUI();
+ marketauxSession=true;
+ marketauxReadiness=result.marketauxStatus||"unknown";
+ showMarketauxReadiness();updateMarketauxAuthUI();
  return true;
 }
 async function restoreMarketauxSession(){
@@ -141,12 +158,14 @@ async function restoreMarketauxSession(){
   const r=await fetch("/.netlify/functions/marketaux-session",{credentials:"same-origin",cache:"no-store"});
   let data;try{data=await r.json()}catch{throw Error("The manager session service is unavailable.")}
   marketauxSession=!!(r.ok&&data.authenticated);
+  marketauxReadiness=marketauxSession?(data.marketauxStatus||"unknown"):"sign_in_required";
   // If Studio already has a valid key in this tab, exchange it for a cookie once.
   if(!marketauxSession&&managerKey){
    try{await createMarketauxSession(managerKey)}
    catch{marketauxSession=false}
   }
   updateMarketauxAuthUI();
+  if(marketauxSession)showMarketauxReadiness();
   if(!marketauxSession){
    $("marketauxAuth").open=true;
    marketauxNotice("Sign in once to view Indian Markets. The secure session is remembered for up to seven days.");
@@ -165,8 +184,8 @@ async function connectMarketauxManager(){
  try{
   await createMarketauxSession(key);
   $("marketauxManagerKey").value="";
-  marketauxNotice("Signed in for up to 7 days on this browser. No repeated manager key entry required.");
-  await loadMarketaux();
+  if(marketauxReady())await loadMarketaux();
+  else showMarketauxReadiness();
  }catch(e){
   marketauxSession=false;updateMarketauxAuthUI();$("marketauxAuth").open=true;
   marketauxNotice(String(e.message||e),true);
@@ -175,7 +194,7 @@ async function connectMarketauxManager(){
 async function logoutMarketaux(){
  try{await fetch("/.netlify/functions/marketaux-session",{method:"DELETE",credentials:"same-origin",cache:"no-store"})}
  catch{}
- marketauxSession=false;marketauxStories=[];marketauxLoadedAt=0;
+ marketauxSession=false;marketauxReadiness="sign_in_required";marketauxStories=[];marketauxLoadedAt=0;
  // Clear the previously entered manager key so the session cannot immediately
  // re-create itself on the next visit. This also signs out AI in this tab.
  managerKey="";try{sessionStorage.removeItem("signaldesk:manager:key")}catch{}
@@ -186,7 +205,7 @@ async function logoutMarketaux(){
 async function activateMarketaux(){
  if(source!=="Marketaux")return;
  const connected=await restoreMarketauxSession();
- if(connected&&source==="Marketaux")await loadMarketaux();
+ if(connected&&marketauxReady()&&source==="Marketaux")await loadMarketaux();
 }
 async function loadMarketaux(){
  if(marketauxLoading||marketauxAuthPending)return;
@@ -194,6 +213,7 @@ async function loadMarketaux(){
   const restored=await restoreMarketauxSession();
   if(!restored)return;
  }
+ if(!marketauxReady()){showMarketauxReadiness();return}
  if(marketauxLoadedAt&&Date.now()-marketauxLoadedAt<45*60_000){
   marketauxNotice("Showing previously loaded India-linked stories. The free-plan request limit is protected by a 45-minute cooldown.");
   renderStories();return;
@@ -218,7 +238,7 @@ async function loadMarketaux(){
    "Connected, but no qualifying India-linked stories returned for the past week.");
   renderStories();renderHealth();
  }catch(e){marketauxNotice(String(e.message||e),true)}
- finally{marketauxLoading=false;updateMarketauxAuthUI();$("marketauxLoad").textContent="Load 3 stories"}
+ finally{marketauxLoading=false;updateMarketauxAuthUI()}
 }
 function renderHealth(){
  $("total").textContent=payload.stories.length+marketauxStories.length;

@@ -266,3 +266,13 @@ footer{margin-top:35px;border-top:1px solid var(--line);padding:18px 0;color:#99
 .marketaux-signout{background:transparent;border:1px solid #d6cfe0;color:#6c627c;border-radius:7px;padding:5px 10px;font-size:10px;font-weight:750}
 .marketaux-signout:hover{background:#f1edf7}
 .marketaux-auth summary small{font-size:10px;font-weight:500;color:#796b94}
+
+
+/* Separate API readiness from manager authentication. */
+.marketaux-setup{background:#fffaf0;border:1px solid #ead9b9;border-radius:9px;padding:11px 13px;margin-top:10px}
+.marketaux-setup summary{color:#775638;font-size:11px;line-height:1.6;font-weight:750;cursor:pointer}
+.marketaux-setup p{color:#715f4b;font-size:11px;line-height:1.7;margin:7px 0}
+.marketaux-setup code{font-size:10px;color:#775638;overflow-wrap:anywhere}
+.marketaux-setup a{color:#00574f;font-size:11px;font-weight:750}
+.marketaux-panel-head button:disabled{opacity:.65;cursor:not-allowed}
+.marketaux-setup[hidden]{display:none}

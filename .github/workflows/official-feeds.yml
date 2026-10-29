@@ -1,7 +1,7 @@
 name: Free official news POC checks
 on:
   push:
-    branches: [marketaux-remember-session, main]
+    branches: [marketaux-clear-readiness, main]
   pull_request:
     branches: [main]
 permissions:
