@@ -176,10 +176,11 @@ async function logoutMarketaux(){
  try{await fetch("/.netlify/functions/marketaux-session",{method:"DELETE",credentials:"same-origin",cache:"no-store"})}
  catch{}
  marketauxSession=false;marketauxStories=[];marketauxLoadedAt=0;
- // A separate AI session may still be active in this tab. Signing out of
- // Marketaux does not revoke the AI manager key.
- updateMarketauxAuthUI();$("marketauxAuth").open=true;
- marketauxNotice("Signed out of Indian Markets on this browser.");
+ // Clear the previously entered manager key so the session cannot immediately
+ // re-create itself on the next visit. This also signs out AI in this tab.
+ managerKey="";try{sessionStorage.removeItem("signaldesk:manager:key")}catch{}
+ updateComposeConnection();updateMarketauxAuthUI();$("marketauxAuth").open=true;
+ marketauxNotice("Signed out on this browser. Your AI manager connection in this tab was also cleared.");
  renderHealth();renderStories();
 }
 async function activateMarketaux(){
