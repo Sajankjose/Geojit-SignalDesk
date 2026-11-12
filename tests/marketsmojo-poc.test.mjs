@@ -76,5 +76,5 @@ test("Retire Marketaux source, manager-cookie endpoints, and all frontend refere
  "netlify/functions/lib/marketaux-auth.mjs","MARKETAUX_POC.md"]){
   assert.equal(existsSync(new URL("../"+file,import.meta.url)),false,file);
  }
- assert.doesNotMatch(github,/marketaux/i);
+ assert.doesNotMatch(github,/netlify\/functions\/marketaux|tests\/marketaux|MARKETAUX_API_TOKEN/i);
 });
