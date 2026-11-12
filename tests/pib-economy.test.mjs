@@ -25,7 +25,7 @@ test("Filter finance and economy headlines but exclude unrelated news and offsit
  assert.ok(rows.every(r=>r.rightsNote.includes("attribution")));
  assert.ok(rows.every(r=>r.priority<=85));
 });
-test("Endpoint provides source attribution and no manager login or Marketaux request",async()=>{
+test("Endpoint provides PIB source attribution without any news-provider account",async()=>{
  const old=globalThis.fetch;let called=0;
  try{
   globalThis.fetch=async (url,opts)=>{
@@ -39,20 +39,18 @@ test("Endpoint provides source attribution and no manager login or Marketaux req
   assert.equal(body.stories.length,1);
   assert.match(body.attribution,/Press Information Bureau/);
   assert.ok(called>=1&&called<=2);
-  assert.ok(!JSON.stringify(body).includes("MARKETAUX_API_TOKEN"));
  }finally{globalThis.fetch=old}
 });
 test("Malformed upstream response is an error and never invents stories",()=>{
  assert.deepEqual(preparePIBStories("<html>Not a feed</html>",now),[]);
 });
-test("Discover has a standalone government feed and clear alternative to blocked Marketaux",()=>{
+test("Discover retains the independent government Economy & Policy feed",()=>{
  assert.match(html,/data-source="PIB"/);
- for(const id of ["pibPanel","pibReload","pibStatus","openPibAlternative"])assert.ok(html.includes('id="'+id+'"'),id);
+ for(const id of ["pibPanel","pibReload","pibStatus"])assert.ok(html.includes('id="'+id+'"'),id);
  assert.match(client,/async function loadPIB\(/);
  assert.match(client,/if\(source==="PIB"\)loadPIB\(\)/);
  assert.match(client,/provider==="PIB RSS"/);
- assert.match(client,/source==="all"\?\[\.\.\.payload.stories,\.\.\.pibStories,\.\.\.marketauxStories\]/);
- assert.match(client,/\$\("openPibAlternative"\)\.addEventListener/);
+ assert.match(client,/source==="all"\?\[\.\.\.payload.stories,\.\.\.pibStories,\.\.\.mojoStories\]/);
  assert.doesNotMatch(client,/api\.x\.com\/2\/tweets|api\.twitter\.com\/2\/tweets/);
 });
 
