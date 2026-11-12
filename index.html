@@ -16,7 +16,7 @@
       <button type="button" class="nav" data-view="studio"><span class="nav-symbol">✎</span><span class="nav-label">Studio</span><span class="nav-count" id="draftNavCount">0</span></button>
       <button type="button" class="nav" data-view="published"><span class="nav-symbol">✓</span><span class="nav-label">Published</span><span class="nav-count" id="publishedNavCount">0</span></button>
     </nav>
-    <div class="sidebar-foot"><span class="signal"></span>Official source POC<small>Human-reviewed · Manual X posting</small></div>
+    <div class="sidebar-foot"><span class="signal"></span>Editorial POC<small>Human-reviewed · Manual X posting</small></div>
   </aside>
   <main class="main">
     <header class="topbar"><div><div class="eyebrow">GEOJIT / EDITORIAL WORKSPACE</div><strong id="topbarTitle">Discover</strong></div>
@@ -29,7 +29,7 @@
     <div class="content">
       <section id="discoverView" class="view-screen">
         <div class="page-lead">
-          <div><div class="eyebrow green">FINANCIAL NEWS DISCOVERY</div><h1>Today's signals</h1><p>Official regulator and economic news, with an optional licensed company-news feed.</p></div>
+          <div><div class="eyebrow green">FINANCIAL NEWS DISCOVERY</div><h1>Today's signals</h1><p>Regulatory updates, economic developments and a curated Indian-market news POC.</p></div>
           <div class="lead-actions"><button type="button" id="composeToggle" class="compose-launch" aria-expanded="false" aria-controls="composePanel">✦ Create from news</button><button type="button" id="refresh" class="secondary">↻ Refresh</button></div>
         </div>
         <section id="composePanel" class="compose-panel" hidden aria-label="Create a tweet from your news">
@@ -85,7 +85,7 @@
                 <button type="button" data-source="RBI">RBI</button>
                 <button type="button" data-source="SEBI">SEBI</button>
                 <button type="button" data-source="PIB" class="pib-tab">Economy &amp; Policy</button>
-                <button type="button" data-source="Marketaux" class="india-news-tab">Indian Markets <span class="poc-dot">POC</span></button>
+                <button type="button" data-source="MarketsMojo" class="mojo-tab">MarketsMojo <span class="poc-dot">POC</span></button>
               </div>
               <label class="range" for="window">Published <select id="window"><option value="1">24 hours</option><option value="7" selected>7 days</option><option value="30">30 days</option></select></label>
             </div>
@@ -95,18 +95,39 @@
               <p id="pibStatus" role="status" aria-live="polite">Open this tab to load official economy and policy releases.</p>
               <small>Source: <a href="https://www.pib.gov.in/" target="_blank" rel="noopener noreferrer">Press Information Bureau ↗</a>. Verify original statements and prominently acknowledge PIB before publication.</small>
             </div>
-            <div id="marketauxPanel" class="marketaux-panel" hidden><div class="marketaux-panel-head"><div><strong>Indian Markets</strong><p>Marketaux publisher headlines · India-linked financial news. Subject to approved usage rights.</p></div><button type="button" id="marketauxLoad" class="outline" disabled>Checking access…</button></div>
-              <p id="marketauxStatus" role="status" aria-live="polite">Checking access and your manager session…</p>
-              <details id="marketauxSetup" class="marketaux-setup" hidden>
-                <summary>What is needed to activate Indian Markets?</summary>
-                <p>Marketaux's public terms raise a commercial-use question for this Geojit editorial tool. Confirm the permitted use with Marketaux or Geojit Legal before enabling it.</p>
-                <p>After permission is confirmed, add <code>MARKETAUX_USAGE_APPROVED</code> with value <code>true</code> in Netlify's <strong>Functions → Production</strong> environment variables, then redeploy. Keep <code>MARKETAUX_API_TOKEN</code> secret.</p>
-                <p><a href="https://www.marketaux.com/tos" target="_blank" rel="noopener noreferrer">Review Marketaux terms ↗</a></p>
-              </details>
-              <details id="marketauxAuth" class="marketaux-auth"><summary>Manager sign-in <small>(once every 7 days)</small></summary><div><input type="password" id="marketauxManagerKey" autocomplete="off" placeholder="SignalDesk manager key" aria-label="SignalDesk manager key"><button type="button" id="marketauxConnect" class="outline">Sign in once</button></div><small>The key stays on Netlify. This browser receives a secure, seven-day session cookie.</small></details>
-              <div class="marketaux-alternative"><strong>Other ways to discover news now</strong><p><button type="button" id="openPibAlternative" class="marketaux-pib-link">Explore Economy &amp; Policy (PIB) →</button> · Free government press releases in SignalDesk</p>
-              <p><a href="https://www.nseindia.com/companies-listing/corporate-filings-announcements" target="_blank" rel="noopener noreferrer">Open NSE corporate announcements ↗</a> · Review company filings on NSE's own website, then use Create from news with the verified headline and source.</p></div>
-              <div id="marketauxSignedIn" class="marketaux-signed-in" hidden><span><icon aria-hidden="true">✓</icon> Manager session active · remembered for up to 7 days</span><button type="button" id="marketauxLogout" class="marketaux-signout">Sign out</button></div></div>
+            <section id="mojoPanel" class="mojo-panel" aria-label="MarketsMojo curated POC stories" hidden>
+              <div class="mojo-panel-head">
+                <div><div class="mojo-kicker">INDIAN MARKETS · EDITORIAL CONCEPT</div>
+                  <h2>MarketsMojo stories, Geojit voice</h2>
+                  <p>Collect a few relevant headlines for a management demonstration, then use AI to draft clear, source-grounded posts.</p>
+                </div>
+                <a class="mojo-open-source" href="https://www.marketsmojo.com/news/markets-today" target="_blank" rel="noopener noreferrer">Open MarketsMojo ↗</a>
+              </div>
+              <div class="mojo-stepper" aria-label="POC workflow"><span>1 · Review MarketsMojo</span><span>2 · Add headline + verified facts</span><span>3 · Generate AI versions</span><span>4 · Manager review</span></div>
+              <div class="mojo-panel-bottom">
+                <div class="mojo-note"><strong>Manual curation for this POC</strong>
+                  <p>Nothing is scraped or automatically synced from MarketsMojo. Save links and brief facts you have independently checked. Auto-fetching requires the Mojo team's permission.</p></div>
+                <button type="button" class="outline dark" id="mojoOpenForm" aria-expanded="false" aria-controls="mojoForm">+ Add news story</button>
+              </div>
+              <form id="mojoForm" class="mojo-form" hidden>
+                <div class="mojo-form-grid">
+                  <label>MarketsMojo story link <span>(required)</span>
+                    <input id="mojoURL" type="url" autocomplete="url" maxlength="1500" required placeholder="https://www.marketsmojo.com/news/..."></label>
+                  <label>News category
+                    <select id="mojoCategory"><option>Market updates</option><option>Company results</option><option>Corporate developments</option><option>Sector trends</option><option>Economic indicators</option></select></label>
+                </div>
+                <label>Headline <span>(required)</span>
+                  <input id="mojoHeadline" type="text" maxlength="240" required placeholder="Name the company or market development clearly"></label>
+                <label>Brief verified facts <span>(your own words; optional but recommended)</span>
+                  <textarea id="mojoFacts" maxlength="1000" rows="3" placeholder="Only facts you checked from the original or an exchange filing. Avoid proprietary analysis, ratings and full-article copying."></textarea></label>
+                <div class="mojo-form-footer"><div>
+                  <button type="submit" class="primary">Add to Discover</button>
+                  <button type="button" id="mojoAddAndDraft" class="mojo-primary-action">✦ Add &amp; draft with AI</button>
+                  <button type="button" id="mojoCancel" class="outline">Cancel</button>
+                </div><p id="mojoFormStatus" role="status" aria-live="polite"></p></div>
+              </form>
+              <div class="mojo-saved-caption"><strong id="mojoCount">0 curated stories</strong><span>Saved in this browser only · No permission for external publishing has been assumed</span></div>
+            </section>
             <input id="search" type="search" placeholder="Search news or topics" aria-label="Search official and market news"><p id="feedAlertStatus" class="feed-alert-status" role="status" aria-live="polite" hidden></p>
             <div id="news" class="news-items" aria-live="polite"><div class="skeleton">Fetching official releases…</div></div>
           </section>
@@ -118,7 +139,7 @@
               <summary>Source health <span class="muted-dot">●</span></summary>
               <div id="sources"><p class="muted">Checking sources…</p></div>
             </details>
-            <div class="data-note">RBI/SEBI and PIB provide official public updates. Marketaux remains optional, subject to commercial-use authorisation. All sources require editorial verification before publishing.</div>
+            <div class="data-note">RBI/SEBI and PIB provide official updates. MarketsMojo POC entries are manually curated in this browser, not a live feed; they are for internal demonstration only.</div>
           </aside>
         </div>
       </section>
@@ -126,7 +147,7 @@
         <div class="page-lead studio-lead"><div><div class="eyebrow green">CREATE / REVIEW</div><h1>Craft your post</h1><p>Two ways to tell a story. Every claim needs the original source.</p></div>
           <button type="button" class="secondary" data-view="discover">← News</button>
         </div>
-        <div id="studioEmpty" class="empty roomy">Select an RBI or SEBI story to create your first post. <button type="button" class="outline dark" data-view="discover">Browse news →</button></div>
+        <div id="studioEmpty" class="empty roomy">Select a story in Discover to create your first post. <button type="button" class="outline dark" data-view="discover">Browse news →</button></div>
         <div id="studioEditor" hidden>
           <div class="draft-selector"><label for="draftSelect">Story</label><select id="draftSelect"></select><span class="status-chip" id="draftStatus">Draft</span></div>
           <div class="studio-grid">
@@ -134,6 +155,7 @@
               <section class="panel source-reference">
                 <div class="section-overline">SOURCE</div><h3 id="studioStoryTitle"></h3>
                 <div id="studioSourceMeta" class="story-meta"></div>
+                <p id="studioDemoNotice" class="studio-demo-notice" hidden>MarketsMojo POC draft for internal demonstration only. External posting, copying a final approved post and Mark Ready are disabled until content and usage rights are cleared.</p>
                 <a id="studioSourceLink" target="_blank" rel="noopener noreferrer" class="source-link">Read original ↗</a>
                 <div id="manualSourceEdit" class="manual-source-edit" hidden><label for="manualSourceURL">Verify using an original source URL</label><input id="manualSourceURL" type="url" maxlength="1500" placeholder="https://publisher.com/original-story"><small>Required for a pasted-text draft before marking Ready.</small></div>
               </section>
@@ -202,7 +224,7 @@
         <div id="publishedList" class="published-items"></div>
         <p class="storage-note">This POC log is browser-local and is not a compliance record.</p>
       </section>
-      <footer>Official RSS metadata · Verify source before publishing · No automated X posting</footer>
+      <footer>Editorial POC · Verify facts and content rights · No automated X posting</footer>
     </div>
   </main>
 </div>

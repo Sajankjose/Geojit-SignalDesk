@@ -242,41 +242,7 @@ footer{margin-top:35px;border-top:1px solid var(--line);padding:18px 0;color:#99
 .compose-credentials summary small{font-weight:700;color:#4c7a65}
 
 
-/* Optional third-party Indian Markets trial — intentionally distinct from official RSS. */
-.india-news-tab{display:inline-flex;align-items:center;gap:5px}
 .poc-dot{border-radius:4px;background:#ffefdf;color:#9c6b39;font-size:8px;font-weight:850;padding:2px 4px}
-.marketaux-panel{background:#f5f2fc;border:1px solid #e7e0f3;border-radius:11px;margin:0 0 13px;padding:15px 16px;color:#4d4965}
-.marketaux-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.marketaux-panel strong{display:block;font-size:12px;color:#4a4064;margin-bottom:4px}
-.marketaux-panel p{font-size:11px;line-height:1.65;color:#6e6682;margin:4px 0}
-.marketaux-panel #marketauxStatus{background:#fff;border-radius:8px;padding:10px 12px;margin:12px 0 0}
-.marketaux-panel #marketauxStatus.warning{background:#fff8ea;border-left:3px solid #eca974;color:#865c38}
-.marketaux-label{background:#f0eafb;color:#736390}
-.marketaux-auth{border-top:1px solid #e7e0f2;margin-top:13px;padding-top:11px}
-.marketaux-auth summary{cursor:pointer;font-size:11px;font-weight:750;color:#63577d}
-.marketaux-auth>div{display:flex;gap:9px;margin:9px 0}
-.marketaux-auth input{min-width:0;flex:1;background:#fff;border:1px solid #d9d0e7;border-radius:8px;padding:10px 12px;font-size:12px}
-.marketaux-auth small{font-size:10px;color:#817797;line-height:1.6}
-@media(max-width:670px){.marketaux-panel-head{flex-direction:column;align-items:stretch}.marketaux-panel-head button{width:100%}.marketaux-auth>div{flex-direction:column}}
-
-
-/* Remembered, HttpOnly seven-day Indian Markets session. */
-.marketaux-signed-in{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:9px;border-top:1px solid #e7e0f2;margin-top:12px;padding-top:11px;color:#277654;font-size:11px;font-weight:750}
-.marketaux-signed-in icon{font-style:normal;background:#e2f3e9;color:#178156;border-radius:50%;padding:1px 4px;margin-right:5px}
-.marketaux-signout{background:transparent;border:1px solid #d6cfe0;color:#6c627c;border-radius:7px;padding:5px 10px;font-size:10px;font-weight:750}
-.marketaux-signout:hover{background:#f1edf7}
-.marketaux-auth summary small{font-size:10px;font-weight:500;color:#796b94}
-
-
-/* Separate API readiness from manager authentication. */
-.marketaux-setup{background:#fffaf0;border:1px solid #ead9b9;border-radius:9px;padding:11px 13px;margin-top:10px}
-.marketaux-setup summary{color:#775638;font-size:11px;line-height:1.6;font-weight:750;cursor:pointer}
-.marketaux-setup p{color:#715f4b;font-size:11px;line-height:1.7;margin:7px 0}
-.marketaux-setup code{font-size:10px;color:#775638;overflow-wrap:anywhere}
-.marketaux-setup a{color:#00574f;font-size:11px;font-weight:750}
-.marketaux-panel-head button:disabled{opacity:.65;cursor:not-allowed}
-.marketaux-setup[hidden]{display:none}
-
 
 /* Separate government financial-policy source, not a substitute for equity news. */
 .pib-tab{color:#0b6159}
@@ -287,6 +253,38 @@ footer{margin-top:35px;border-top:1px solid var(--line);padding:18px 0;color:#99
 .pib-panel small{font-size:10px;color:#637f7a}
 .pib-panel a{color:#00675e;font-weight:750}
 #pibStatus{padding:8px 10px;background:white;border-radius:8px;margin:10px 0}
-.marketaux-alternative{font-size:11px;line-height:1.65;padding:9px 0 0;margin:10px 0 0;color:#625679}
-.marketaux-pib-link{background:none;border:0;padding:0;display:inline;color:#075c53;font:inherit;font-weight:800;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 @media(max-width:680px){.pib-panel-head{flex-direction:column;align-items:stretch}.pib-panel-head button{width:100%}}
+
+/* MarketsMojo manual curation / AI editorial demonstration. */
+.mojo-tab{display:inline-flex;align-items:center;gap:5px}
+.mojo-panel{border:1px solid #dce7e2;background:linear-gradient(145deg,#f6faf8,#ffffff 80%);border-radius:14px;padding:20px;margin:0 0 16px;box-shadow:0 4px 16px rgba(0,76,68,.025)}
+.mojo-panel[hidden],.mojo-form[hidden],.studio-demo-notice[hidden]{display:none!important}
+.mojo-panel-head{display:flex;gap:20px;align-items:center;justify-content:space-between}
+.mojo-panel-head>div{flex:1;min-width:0}
+.mojo-kicker{font-size:9px;color:#008271;font-weight:850;letter-spacing:1.2px;margin-bottom:7px}
+.mojo-panel h2{font-size:17px;line-height:1.4;font-weight:800;letter-spacing:-.45px;color:#054d44;margin:0 0 5px}
+.mojo-panel p{font-size:11px;line-height:1.7;color:#61776b;margin:0}
+.mojo-open-source{display:inline-flex;align-items:center;justify-content:center;text-align:center;white-space:nowrap;background:#04594e;color:white!important;text-decoration:none;font-size:11px;font-weight:800;border-radius:8px;padding:11px 14px}
+.mojo-stepper{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin:15px 0;padding:10px 0;border-top:1px solid #e5eee9;border-bottom:1px solid #e5eee9}
+.mojo-stepper span{font-size:10px;font-weight:700;color:#4d7569;background:#edf5f1;padding:5px 8px;border-radius:6px}
+.mojo-panel-bottom{display:flex;gap:18px;align-items:center;justify-content:space-between}
+.mojo-note{flex:1}.mojo-note strong{font-size:11px;color:#245d4c}.mojo-note p{font-size:10px;margin:4px 0 0}
+.mojo-panel-bottom>button{white-space:nowrap}
+.mojo-form{padding:17px 15px;border-radius:10px;border:1px solid #d5e5dc;background:white;margin-top:15px}
+.mojo-form label{display:block;font-size:11px;font-weight:800;color:#174f43;margin-bottom:12px}
+.mojo-form label span{font-size:10px;font-weight:500;color:#718678}
+.mojo-form input,.mojo-form select,.mojo-form textarea{display:block;width:100%;border:1px solid #d3e2db;border-radius:7px;background:#fff;color:#173d35;padding:10px 12px;margin-top:6px;font:inherit;font-weight:500;font-size:12px;min-width:0;outline-color:#088778}
+.mojo-form textarea{resize:vertical;line-height:1.5}
+.mojo-form-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:14px}
+.mojo-form-footer{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+.mojo-form-footer>div{display:flex;flex-wrap:wrap;gap:8px}
+.mojo-form-footer button{padding:10px 13px;border-radius:8px;font-size:11px}
+.mojo-primary-action{background:#047365;color:white;border:0;font-weight:800;cursor:pointer}
+.mojo-form-footer #mojoFormStatus{color:#a4573a;font-size:10px;max-width:320px}
+.mojo-saved-caption{display:flex;align-items:center;flex-wrap:wrap;gap:8px;border-top:1px solid #e4ede8;margin-top:16px;padding-top:12px}
+.mojo-saved-caption strong{font-size:11px;color:#075447}
+.mojo-saved-caption span{font-size:10px;color:#7c897e}
+.mojo-label{background:#f5eefb;color:#6e577f}
+.mojo-remove{border:0;background:transparent;color:#756b74;padding:8px 4px;font-size:10px;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.studio-demo-notice{border-left:3px solid #c29b59;border-radius:0 7px 7px 0;background:#fff8ee;padding:11px 12px;margin:13px 0;color:#75593a;font-size:11px;line-height:1.65}
+@media(max-width:760px){.mojo-panel-head{align-items:stretch;flex-direction:column}.mojo-open-source{align-self:flex-start}.mojo-panel-bottom{align-items:stretch;flex-direction:column}.mojo-panel-bottom>button{align-self:flex-start}.mojo-form-grid{grid-template-columns:1fr}.mojo-form-footer>div{width:100%}}
