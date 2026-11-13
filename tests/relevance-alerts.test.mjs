@@ -31,7 +31,7 @@ test("Ranked feed controls and new-only bell coexist with source filter",()=>{
  for(const id of ["alertsPanel","alertsButton","alertCount","unreadCount","rankingTabs","feedAlertStatus","hashtagSuggestions","hashtagsInput"])assert.ok(html.includes('id="'+id+'"'),id);
  assert.match(ui,/rankMode==="latest"/);
  assert.match(ui,/priorityOf\(b\)-priorityOf\(a\)/);
- assert.match(ui,/setInterval\(\(\)=>\{if\(!document\.hidden\)refresh\(\)\}/);
+ assert.match(ui,/setInterval\(\(\)=>\{if\(!document\.hidden\|\|desktopAlertsActive\(\)\)refresh\(\)\}/);
  assert.match(ui,/firstVisit=known\.size===0/);
  assert.match(ui,/if\(!firstVisit/);
  assert.doesNotMatch(ui,/Notification\.requestPermission\(|serviceWorker\.register\(/);
