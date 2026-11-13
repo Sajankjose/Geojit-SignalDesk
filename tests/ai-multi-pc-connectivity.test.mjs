@@ -8,10 +8,13 @@ const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
 const a=ui.indexOf("async function checkComposerEndpoint()"),b=ui.indexOf("const getHost=",a);
 assert.ok(a>=0&&b>a,"Composer AI diagnostic and connect are present");
 const handlers=ui.slice(a,b);
+const authStart=ui.indexOf("const safeKey=()=>"),authEnd=ui.indexOf("function persist(){",authStart);
+assert.ok(authStart>=0&&authEnd>authStart,"Shared AI connection state helpers are present");
+const authentication=ui.slice(authStart,authEnd);
 function simulate(fetchImpl){
  const uiElements=new Map();
  const $=id=>{
-  if(!uiElements.has(id))uiElements.set(id,{value:"",textContent:"",disabled:false,open:false,focus(){}});
+  if(!uiElements.has(id))uiElements.set(id,{value:"",textContent:"",disabled:false,open:false,hidden:false,dataset:{},focus(){}});
   return uiElements.get(id);
  };
  $("composeManagerKey").value="test-manager-key";
@@ -20,10 +23,10 @@ function simulate(fetchImpl){
  const localFetch=async(url,options)=>{calls.push({url,options});return fetchImpl(url,options)};
  const storage=new Map();
  const ctx=createContext({$:id=>$(id),fetch:localFetch,AbortSignal,
-  sessionStorage:{setItem:(k,v)=>storage.set(k,v)},
+  sessionStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},
   composeNotice:(m,failed)=>messages.push({m,failed}),
-  updateComposeConnection(){},managerKey:"",String,Error,Date});
- runInContext(handlers,ctx);
+  updateComposeConnection(){},String,Error,Date});
+ runInContext(authentication+handlers,ctx);
  return {ctx,$,calls,messages,storage,run:expression=>runInContext(expression,ctx)};
 }
 test("Two independent browsers can simultaneously authenticate; backend has no single-session limit",async()=>{
@@ -55,6 +58,8 @@ test("Network block is reported without blaming OpenAI configuration",async()=>{
  const e=simulate(async()=>{throw new TypeError("Failed to fetch")});
  await e.run("connectComposerAI()");
  assert.match(e.messages.at(-1).m,/could not reach the AI endpoint/i);
+ assert.equal(e.$("studioAIStatusLabel").textContent,"AI connection issue");
+ assert.equal(e.$("composeAIStatusLabel").textContent,"AI connection issue");
  assert.doesNotMatch(e.messages.at(-1).m,/Check Netlify settings/);
  assert.equal(e.$("composeCredentials").open,true);
  assert.equal(e.calls[0].options.headers["x-manager-key"],"test-manager-key");

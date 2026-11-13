@@ -62,8 +62,12 @@
               <input id="composeReference" type="url" maxlength="1500" placeholder="https://publisher.com/story">
             </div>
           </div>
-          <details id="composeCredentials" class="compose-credentials"><summary>AI connection <small id="composeConnectionState">(connect once per browser tab)</small></summary>
-            <p>The OpenAI key stays in Netlify. Enter only your manager access key. If you type it here, Generate will connect automatically.</p>
+          <div id="composeAIStatus" class="ai-status-line" data-state="disconnected" role="status" aria-live="polite">
+            <strong id="composeAIStatusLabel">AI not connected</strong>
+            <span id="composeAIStatusDetail">Enter your manager key to enable AI drafting in this browser tab.</span>
+          </div>
+          <details id="composeCredentials" class="compose-credentials"><summary>AI connection settings <small id="composeConnectionState">Not connected</small></summary>
+            <p>AI access is shared through Netlify; each browser tab connects with its own manager key. The OpenAI key stays on the server. When connected, you do not need to enter the key again.</p>
             <div class="compose-credential-row"><input type="password" id="composeManagerKey" placeholder="Manager access key" autocomplete="off"><button type="button" id="composeConnect" class="outline">Connect</button></div>
             <div class="compose-ai-tools"><button type="button" id="composeCheckEndpoint" class="outline">Check AI connection</button><a href="/.netlify/functions/ai-status" target="_blank" rel="noopener noreferrer">Open endpoint test ↗</a></div>
             <p id="composeDiagnostic" class="compose-diagnostic" role="status" aria-live="polite">Each computer connects independently. No second OpenAI key is needed.</p>
@@ -188,11 +192,15 @@
                   <div id="hashtagSuggestions" class="hashtag-suggestions"></div>
                 </div>
                 <div class="editor-under"><span id="studioCount">0 / 280</span><span>Approximate X character count</span></div>
+                <div id="studioAIStatus" class="ai-status-line" data-state="disconnected" role="status" aria-live="polite">
+                  <strong id="studioAIStatusLabel">AI not connected</strong>
+                  <span id="studioAIStatusDetail">Connect once using the manager key to generate AI tweet variants.</span>
+                </div>
                 <details class="editor-config" id="aiSetupPanel">
-                  <summary>AI connection settings</summary>
-                  <p>Real AI variants require OPENAI_API_KEY and MANAGER_ACCESS_KEY in Netlify. Enter your manager key here for this browser tab only. Never enter your OpenAI key in this page.</p>
-                  <label for="managerKey">Manager access key</label><input type="password" id="managerKey" autocomplete="off" placeholder="Your Netlify manager key">
-                  <button type="button" class="outline" id="saveManagerKey">Connect AI</button>
+                  <summary>AI connection settings <span class="ai-summary-state" id="studioAISummaryState">Not connected</span></summary>
+                  <p>Real AI drafting uses Geojit's server-side OpenAI connection. Enter your manager key once for this browser tab; never enter an OpenAI API key here. If already connected, no further action is needed.</p>
+                  <label for="managerKey">Manager access key</label><input type="password" id="managerKey" autocomplete="off" placeholder="Enter manager key only if not connected">
+                  <div class="ai-settings-actions"><button type="button" class="outline" id="saveManagerKey">Connect AI</button><button type="button" class="outline" id="studioAIRecheck" hidden>Recheck connection</button><button type="button" class="outline" id="studioAIDisconnect" hidden>Disconnect</button></div>
                 </details>
                 <div id="draftRisks" class="risk-notice" hidden></div>
               </section>

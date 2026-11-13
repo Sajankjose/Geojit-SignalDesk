@@ -223,6 +223,84 @@ function renderHashtagSuggestions(d){
 const validUrl=u=>{try{const v=new URL(u);return v.protocol==="https:"?v.href:""}catch{return ""}};
 const safeKey=()=>{try{return sessionStorage.getItem("signaldesk:manager:key")||""}catch{return ""}};
 let managerKey=safeKey();
+let aiConnectionState=managerKey?"checking":"disconnected";
+let aiConnectionDetail="";
+let aiStatusRequestSeq=0;
+function renderAIConnectionState(){
+ const states={
+  connected:{label:"AI connected",detail:"Verified with Netlify for this browser tab. You can generate AI tweet variants."},
+  disconnected:{label:"AI not connected",detail:"Enter your manager access key to enable AI drafting. Manual editing still works."},
+  checking:{label:"Checking AI connection…",detail:"Verifying your saved manager access with Netlify. Please wait."},
+  error:{label:"AI connection issue",detail:"Connection could not be verified on this computer. Recheck or connect with your manager key."}
+ };
+ const active=states[aiConnectionState]||states.disconnected;
+ const detail=aiConnectionDetail||active.detail;
+ for(const prefix of ["studio","compose"]){
+  $(prefix+"AIStatus").dataset.state=aiConnectionState;
+  $(prefix+"AIStatusLabel").textContent=active.label;
+  $(prefix+"AIStatusDetail").textContent=detail;
+ }
+ $("studioAISummaryState").textContent=active.label;
+ $("composeConnectionState").textContent=active.label;
+ $("studioAIRecheck").hidden=!managerKey;
+ $("studioAIDisconnect").hidden=!managerKey;
+ if(!$("saveManagerKey").disabled)$("saveManagerKey").textContent=aiConnectionState==="connected"?"Change key":"Connect AI";
+ if(!$("composeConnect").disabled)$("composeConnect").textContent=aiConnectionState==="connected"?"Change key":"Connect";
+}
+function setAIConnectionState(state,detail=""){
+ aiConnectionState=state;aiConnectionDetail=detail;
+ renderAIConnectionState();
+}
+function disconnectAI(){
+ ++aiStatusRequestSeq;
+ managerKey="";
+ try{sessionStorage.removeItem("signaldesk:manager:key")}catch{}
+ $("managerKey").value="";$("composeManagerKey").value="";
+ setAIConnectionState("disconnected","Disconnected in this browser tab. Enter your manager key to use AI again.");
+}
+// Successful authentication confirms manager access and that Netlify has an
+// OpenAI key configured. It does not call the paid model or guarantee quota.
+async function verifyAIConnection(candidate,{remember=true}={}){
+ if(!candidate){setAIConnectionState("disconnected");return false}
+ const seq=++aiStatusRequestSeq;
+ const oldKey=managerKey,oldState=aiConnectionState;
+ setAIConnectionState("checking");
+ try{
+  let response;
+  try{response=await fetch("/.netlify/functions/ai-status",{
+    headers:{"x-manager-key":candidate},cache:"no-store",signal:AbortSignal.timeout(12000)
+  })}catch(e){
+   throw Error(e?.name==="TimeoutError"||e?.name==="AbortError"?
+    "Netlify did not respond within 12 seconds. Check network, VPN or firewall.":
+    "This computer could not reach the AI endpoint. Check the network and browser security settings.");
+  }
+  let info;
+  try{info=await response.json()}catch{throw Error("The AI status endpoint returned an unreadable response.")}
+  if(!response.ok||!info.ready){
+   const err=Error(info.error||"AI connection was not accepted by Netlify.");
+   err.invalidKey=response.status===401;
+   throw err;
+  }
+  if(seq!==aiStatusRequestSeq)return false;
+  managerKey=candidate;
+  if(remember){try{sessionStorage.setItem("signaldesk:manager:key",candidate)}catch{}}
+  setAIConnectionState("connected");
+  return true;
+ }catch(e){
+  if(seq!==aiStatusRequestSeq)return false;
+  if(oldKey&&oldState==="connected"&&oldKey!==candidate){
+   setAIConnectionState("connected","Your earlier connection remains active. The new key could not be verified: "+String(e.message||e));
+  }else{
+   if(e.invalidKey&&managerKey===candidate){
+    managerKey="";
+    try{sessionStorage.removeItem("signaldesk:manager:key")}catch{}
+   }
+   setAIConnectionState("error",String(e.message||e));
+  }
+  return false;
+ }
+}
+
 function persist(){try{localStorage.setItem(storeKey,JSON.stringify(workspace))}catch(e){notify("Browser storage is unavailable. Changes may not survive a refresh.",true)}updateNavCounts()}
 function notify(message,error=false){const n=$("editorMessage");if(n){n.textContent=message;n.classList.toggle("error",error)}}
 const dateFmt=(v,withYear=false,dateOnly=false)=>{
@@ -464,7 +542,7 @@ function canPreviewUrl(raw){
  }catch{return false}
 }
 function updateComposeConnection(){
- $("composeConnectionState").textContent=managerKey?"Connected for this tab ✓":"(connect once per browser tab)";
+ renderAIConnectionState();
 }
 function showManualLinkHelp(message){
  $("composeFallback").open=true;
@@ -525,32 +603,28 @@ async function checkComposerEndpoint(){
 async function connectComposerAI(){
  const candidate=$("composeManagerKey").value.trim();
  if(!candidate){
-  composeNotice(managerKey?"AI is already connected for this browser tab.":"Enter your manager access key to connect AI.",!managerKey);
-  updateComposeConnection();
-  return !!managerKey;
+  if(!managerKey){
+   $("composeCredentials").open=true;
+   composeNotice("AI not connected. Enter the manager access key once on this computer.",true);
+   updateComposeConnection();return false;
+  }
+  if(aiConnectionState==="connected"){
+   composeNotice("AI is connected and ready for drafting in this browser tab.");
+   updateComposeConnection();return true;
+  }
  }
  $("composeConnect").disabled=true;$("composeConnect").textContent="Checking…";
- try{
-  let response;
-  try{
-   response=await fetch("/.netlify/functions/ai-status",{
-    headers:{"x-manager-key":candidate},cache:"no-store",signal:AbortSignal.timeout(12000)
-   });
-  }catch(e){
-   $("composeCredentials").open=true;
-   throw Error(e?.name==="TimeoutError"||e?.name==="AbortError"?
-    "AI connection timed out on this computer. Click Check AI connection to test Netlify reachability":
-    "This computer could not reach the AI endpoint. Click Check AI connection; check VPN, firewall or browser extensions if it fails");
-  }
-  let result;try{result=await response.json()}catch{throw Error("AI connection check did not return a valid response.")}
-  if(!response.ok||!result.ready)throw Error(result.error||"The AI service is not configured.");
-  managerKey=candidate;
-  try{sessionStorage.setItem("signaldesk:manager:key",managerKey)}catch{}
+ const verified=await verifyAIConnection(candidate||managerKey);
+ if(verified){
   $("composeManagerKey").value="";$("composeCredentials").open=false;
-  composeNotice("AI connected. You can generate two editable versions.");
-  updateComposeConnection();return true;
- }catch(e){composeNotice("Could not connect AI: "+String(e.message||e)+".",true);return false}
- finally{$("composeConnect").disabled=false;$("composeConnect").textContent="Connect"}
+  composeNotice("AI connected and verified with Netlify. You can generate tweet variants.");
+ }else{
+  $("composeCredentials").open=true;
+  composeNotice("Could not connect AI: "+(aiConnectionDetail||"Connection could not be verified.")+".",true);
+ }
+ $("composeConnect").disabled=false;
+ updateComposeConnection();
+ return verified;
 }
 const getHost=url=>{try{return new URL(url).hostname.replace(/^www\./,"")}catch{return "User source"}};
 async function getComposerStory(useAI){
@@ -582,7 +656,7 @@ async function getComposerStory(useAI){
  const response=await fetch("/.netlify/functions/news-preview",{method:"POST",headers:{"Content-Type":"application/json","x-manager-key":managerKey},body:JSON.stringify({url}),cache:"no-store"});
  let result;try{result=await response.json()}catch{throw Error("This publisher did not return a usable preview. Paste the headline and a few facts instead.")}
  if(!response.ok){
-  if(response.status===401){managerKey="";try{sessionStorage.removeItem("signaldesk:manager:key")}catch{}updateComposeConnection();$("composeCredentials").open=true}
+  if(response.status===401){disconnectAI();setAIConnectionState("error","Manager access was rejected. Reconnect with your current key.");$("composeCredentials").open=true}
   showManualLinkHelp(result.error||"This source blocked its preview. Paste the headline and key facts instead.");
   throw Error(result.error||"This source could not be previewed. Paste the headline and key facts instead.");
  }
@@ -600,13 +674,13 @@ async function submitComposer(useAI){
    $("composeHeadline").focus();return;
   }
  }
- if(useAI&&!managerKey){
-  if($("composeManagerKey").value.trim()){
+ if(useAI&&aiConnectionState!=="connected"){
+  if($("composeManagerKey").value.trim()||managerKey){
    const connected=await connectComposerAI();
    if(!connected)return;
   }else{
    $("composeCredentials").open=true;
-   composeNotice("Enter your manager access key here, then click Generate again. No need to open Studio.",true);
+   composeNotice("AI not connected. Enter your manager access key, then click Generate again.",true);
    $("composeManagerKey").focus();return;
   }
  }
@@ -781,12 +855,19 @@ function renderPublished(){
 }
 async function generate(){
  const d=current();if(!d||generating||d.status==="Published")return;
- if(!managerKey){$("aiSetupPanel").open=true;notify("Connect your manager key to generate two real AI versions. The OpenAI API key must be configured securely in Netlify.",true);$("managerKey").focus();return}
+ if(!managerKey){$("aiSetupPanel").open=true;notify("AI not connected. Enter your manager key to generate AI versions.",true);$("managerKey").focus();return}
+ if(aiConnectionState!=="connected"){
+  const valid=await verifyAIConnection(managerKey);
+  if(!valid){$("aiSetupPanel").open=true;notify("AI connection issue: "+aiConnectionDetail+". Reconnect before generating.",true);return}
+ }
  generating=true;$("aiGenerate").disabled=true;$("aiGenerate").textContent="Generating…";
  try{
   const result=await fetch("/.netlify/functions/draft",{method:"POST",headers:{"Content-Type":"application/json","x-manager-key":managerKey},body:JSON.stringify({title:d.source.title,snippet:d.source.snippet,publisher:d.source.publisher,publishedAt:d.source.publishedAt,sourceUrl:d.source.url,userPasted:!!d.manual||isMojoPOC(d)})});
   const body=await result.json();
-  if(!result.ok)throw Error(body.error||"AI drafting unavailable");
+  if(!result.ok){
+   if(result.status===401){disconnectAI();setAIConnectionState("error","Netlify rejected the manager key. Connect again.");$("aiSetupPanel").open=true}
+   throw Error(body.error||"AI drafting unavailable");
+  }
   if(typeof body.news!=="string"||!body.news.trim()||typeof body.insight!=="string")throw Error("Unexpected drafting response");
   d.variants={news:body.news,insight:body.insight};d.variant="news";
   d.risks=Array.isArray(body.risks)?body.risks.slice(0,10).map(String):[];
@@ -906,24 +987,35 @@ $("recordPublished").addEventListener("click",()=>{
  persist();renderStudio();renderPublished();notify("Manual publication recorded in this browser. This is not a compliance archive.");
 });
 $("saveManagerKey").addEventListener("click",async()=>{
- const candidate=$("managerKey").value.trim();$("managerKey").value="";
- if(!candidate){managerKey="";try{sessionStorage.removeItem("signaldesk:manager:key")}catch{}notify("No key entered. You can still edit drafts manually.",true);return}
- $("saveManagerKey").disabled=true;$("saveManagerKey").textContent="Checking connection…";
- try{
-  const response=await fetch("/.netlify/functions/ai-status",{headers:{"x-manager-key":candidate},cache:"no-store"});
-  const body=await response.json();
-  if(!response.ok)throw Error(body.error||"AI connection unavailable");
-  if(!body.ready)throw Error(body.error||"The OpenAI service is not configured in Netlify yet");
-  managerKey=candidate;
-  try{sessionStorage.setItem("signaldesk:manager:key",managerKey)}catch{}
-  $("aiSetupPanel").open=false;
-  notify("AI is connected. Select Generate 2 AI versions for your selected story.");
- }catch(e){managerKey="";try{sessionStorage.removeItem("signaldesk:manager:key")}catch{}notify("AI connection: "+String(e.message||e)+". Manual drafting is still available.",true)}
- finally{$("saveManagerKey").disabled=false;$("saveManagerKey").textContent="Connect AI"}
+ const candidate=$("managerKey").value.trim();
+ if(!candidate&&!managerKey){
+  $("aiSetupPanel").open=true;
+  notify("AI not connected. Enter your manager access key first.",true);return;
+ }
+ $("saveManagerKey").disabled=true;$("saveManagerKey").textContent="Checking…";
+ const connected=await verifyAIConnection(candidate||managerKey);
+ if(connected){
+  $("managerKey").value="";
+  notify("AI connected and verified with Netlify. You can generate AI versions.");
+ }else{
+  $("aiSetupPanel").open=true;
+  notify("AI connection issue: "+(aiConnectionDetail||"Could not verify access.")+" Manual drafting remains available.",true);
+ }
+ $("saveManagerKey").disabled=false;renderAIConnectionState();
+});
+$("studioAIRecheck").addEventListener("click",async()=>{
+ if(!managerKey){setAIConnectionState("disconnected");return}
+ const ok=await verifyAIConnection(managerKey);
+ notify(ok?"AI connected and verified for this browser tab.":"AI check: "+aiConnectionDetail,!ok);
+});
+$("studioAIDisconnect").addEventListener("click",()=>{
+ disconnectAI();
+ notify("AI disconnected from this browser tab. Your drafts are unaffected.");
 });
 $("aiGenerate").addEventListener("click",generate);
 const initialView=location.hash.replace("#","");
 updateComposeConnection();
+if(managerKey)void verifyAIConnection(managerKey,{remember:false});
 renderDesktopAlertControls();
 updateNavCounts();navigate(initialView,false);refresh();
 setInterval(()=>{if(!document.hidden||desktopAlertsActive())refresh()},5*60*1000);

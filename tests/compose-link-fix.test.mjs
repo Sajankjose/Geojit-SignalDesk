@@ -14,7 +14,7 @@ test("Unsupported Yahoo Finance source triggers inline headline fallback rather 
  assert.match(html,/id="composeFallback"/);
 });
 test("Generate automatically validates inline entered manager key and doesn't require separate Studio visit",()=>{
- assert.match(ui,/if\(\$\("composeManagerKey"\)\.value\.trim\(\)\)\{/);
+ assert.match(ui,/if\(\$\("composeManagerKey"\)\.value\.trim\(\)\|\|managerKey\)\{/);
  assert.match(ui,/const connected=await connectComposerAI\(\)/);
  assert.match(ui,/if\(!connected\)return/);
  assert.match(ui,/updateComposeConnection\(\)/);

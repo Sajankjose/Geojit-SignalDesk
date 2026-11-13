@@ -324,3 +324,24 @@ footer{margin-top:35px;border-top:1px solid var(--line);padding:18px 0;color:#99
 .compose-ai-tools a{font-size:10px;text-decoration:underline;text-underline-offset:2px;color:#076657}
 .compose-ai-tools button:disabled{opacity:.6;cursor:wait}
 .compose-diagnostic{font-size:10px;line-height:1.7;color:#58786b;margin:7px 0 2px}
+
+/* One clear, verified AI connection state shared by Studio and Compose. */
+.ai-status-line{display:flex;align-items:center;gap:7px 11px;flex-wrap:wrap;padding:11px 13px;margin:10px 0;border-radius:9px;border:1px solid #dce5e2;background:#f8faf9}
+.ai-status-line strong{display:inline-flex;align-items:center;font-size:11px;font-weight:800;white-space:nowrap;color:#65746c}
+.ai-status-line strong::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;background:#96a39e;flex-shrink:0}
+.ai-status-line span{color:#65766e;font-size:10px;line-height:1.6;flex:1;min-width:150px}
+.ai-status-line[data-state="connected"]{background:#edf8f1;border-color:#c6e7d1}
+.ai-status-line[data-state="connected"] strong{color:#087449}
+.ai-status-line[data-state="connected"] strong::before{background:#20a667}
+.ai-status-line[data-state="checking"]{background:#f6f8fb;border-color:#dce4ef}
+.ai-status-line[data-state="checking"] strong{color:#476b94}
+.ai-status-line[data-state="checking"] strong::before{background:#5795c7}
+.ai-status-line[data-state="error"]{background:#fff8ef;border-color:#eedbc4}
+.ai-status-line[data-state="error"] strong{color:#9a5c2c}
+.ai-status-line[data-state="error"] strong::before{background:#dd9248}
+.ai-summary-state{font-size:10px;color:#578474;margin-left:7px;font-weight:700}
+.ai-settings-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.ai-settings-actions button{font-size:11px}
+.ai-settings-actions button[hidden]{display:none!important}
+.compose-credentials summary small{font-weight:750;color:#477868}
+@media(max-width:600px){.ai-status-line{align-items:flex-start;flex-direction:column}.ai-status-line span{min-width:0}}
