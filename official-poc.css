@@ -307,3 +307,12 @@ footer{margin-top:35px;border-top:1px solid var(--line);padding:18px 0;color:#99
 .desktop-alert-controls button:disabled{opacity:.58;cursor:not-allowed}
 .desktop-alert-settings small{display:block;font-size:9px;line-height:1.65;color:#71867a}
 .desktop-alert-controls button[hidden]{display:none!important}
+
+
+/* Clear distinction between in-app confirmation and a system notification. */
+.desktop-test-toast{position:fixed;right:24px;bottom:24px;max-width:min(390px,calc(100vw - 28px));z-index:1000;background:#07584e;color:#fff;padding:14px 18px;border-radius:10px;box-shadow:0 12px 36px rgba(3,46,38,.25);font-size:12px;line-height:1.55;font-weight:650}
+.desktop-test-toast[hidden]{display:none!important}
+.desktop-alert-help{margin-top:10px;border-top:1px solid #dce7df;padding-top:9px}
+.desktop-alert-help summary{font-size:10px;color:#006357;font-weight:800;cursor:pointer}
+.desktop-alert-help p{font-size:10px;line-height:1.65;color:#5d7167;margin:7px 0 0}
+@media(max-width:640px){.desktop-test-toast{left:14px;right:14px;bottom:14px;max-width:none}}

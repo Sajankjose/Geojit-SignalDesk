@@ -11,7 +11,7 @@ assert.ok(first>0&&last>first,"Desktop notification and feed-tracking functions 
 
 function environment({support=true,permission="default",savedPreference="disabled"}={}){
  const store=new Map([["signaldesk:desktop-alerts-enabled:v1",savedPreference]]);
- const calls={requested:0,notifications:[],focus:0};
+ const calls={requested:0,notifications:[],instances:[],focus:0};
  const dom=new Map();
  const $=id=>{
   if(!dom.has(id))dom.set(id,{hidden:false,disabled:false,textContent:"",open:false,
@@ -19,7 +19,7 @@ function environment({support=true,permission="default",savedPreference="disable
   return dom.get(id);
  };
  const NotificationClass=support?class TestNotification{
-  constructor(title,details){calls.notifications.push({title,details})}
+  constructor(title,details){calls.notifications.push({title,details});calls.instances.push(this)}
   close(){}
   static permission=permission;
   static async requestPermission(){calls.requested++;this.permission="granted";return "granted"}
@@ -99,7 +99,10 @@ test("Test control sends a harmless notification when permission has been grante
  e.execute("testDesktopAlert()");
  assert.equal(e.calls.notifications.length,1);
  assert.match(e.calls.notifications[0].title,/Test alert/);
- assert.match(e.$("desktopAlertStatus").textContent,/Test sent/);
+ assert.match(e.$("desktopAlertStatus").textContent,/Test requested from Chrome/);
+ assert.equal(e.$("desktopTestToast").hidden,false);
+ assert.match(e.$("desktopTestToast").textContent,/in-page test succeeded/);
+ assert.match(e.calls.notifications[0].details.tag,/^signaldesk-test-\d+-\d+$/);
 });
 
 test("Denied or unsupported notification permission still leaves the in-app alerts intact",()=>{
@@ -122,4 +125,34 @@ test("UI clearly says browser must stay open; provider POC is not silently auto-
  assert.match(script,/s\.publisher==="RBI"\|\|s\.publisher==="SEBI"/);
  assert.doesNotMatch(script,/serviceWorker\.register\(/);
  assert.doesNotMatch(script,/api\.x\.com\/2\/tweets|api\.twitter\.com\/2\/tweets/);
+});
+
+test("The test clearly separates Chrome request, Chrome show, and display-error signals",async()=>{
+ const e=environment({permission:"granted"});
+ await e.execute("toggleDesktopAlerts()");
+ e.execute("testDesktopAlert()");
+ assert.match(e.$("desktopAlertStatus").textContent,/not guaranteed/);
+ assert.equal(e.$("desktopTestToast").hidden,false);
+ assert.equal(e.calls.instances.length,1);
+ e.calls.instances[0].onshow();
+ assert.match(e.$("desktopAlertStatus").textContent,/Chrome reported the notification was shown/);
+ e.calls.instances[0].onerror();
+ assert.match(e.$("desktopAlertStatus").textContent,/display error/);
+ assert.match(e.$("desktopTestToast").textContent,/display failed/);
+});
+test("Repeated Test clicks use distinct notification tags rather than silently replacing the old one",async()=>{
+ const e=environment({permission:"granted"});
+ await e.execute("toggleDesktopAlerts()");
+ e.execute("testDesktopAlert()");
+ const t1=e.calls.notifications[0].details.tag;
+ e.execute("testDesktopAlert()"); // Repeated clicks must use different IDs.
+ assert.equal(e.calls.notifications.length,2);
+ assert.notEqual(e.calls.notifications[1].details.tag,t1);
+});
+test("Troubleshooting guidance covers Chrome permission and Windows notification banners",()=>{
+ assert.match(html,/desktopTestToast/);
+ assert.match(html,/Not seeing a desktop popup/);
+ assert.match(html,/Do not disturb/);
+ assert.match(html,/Google Chrome/);
+ assert.doesNotMatch(script,/Test sent\. If you cannot see it/);
 });
