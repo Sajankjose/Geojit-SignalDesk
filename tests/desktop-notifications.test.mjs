@@ -102,7 +102,7 @@ test("Test control sends a harmless notification when permission has been grante
  assert.match(e.$("desktopAlertStatus").textContent,/Test requested from Chrome/);
  assert.equal(e.$("desktopTestToast").hidden,false);
  assert.match(e.$("desktopTestToast").textContent,/in-page test succeeded/);
- assert.match(e.calls.notifications[0].details.tag,/^signaldesk-test-\\d+$/);
+ assert.match(e.calls.notifications[0].details.tag,/^signaldesk-test-\d+-\d+$/);
 });
 
 test("Denied or unsupported notification permission still leaves the in-app alerts intact",()=>{
@@ -145,11 +145,7 @@ test("Repeated Test clicks use distinct notification tags rather than silently r
  await e.execute("toggleDesktopAlerts()");
  e.execute("testDesktopAlert()");
  const t1=e.calls.notifications[0].details.tag;
- // Date.now may not change between two synchronous invocations, so simulate
- // a real later click on the same page after clock progress.
- const d=Date.now;
- Date.now=()=>d()+250;
- try{e.execute("testDesktopAlert()")}finally{Date.now=d}
+ e.execute("testDesktopAlert()"); // Repeated clicks must use different IDs.
  assert.equal(e.calls.notifications.length,2);
  assert.notEqual(e.calls.notifications[1].details.tag,t1);
 });
