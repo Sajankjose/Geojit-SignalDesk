@@ -23,7 +23,12 @@
       <div class="top-actions"><span class="today-date" id="clock"></span>
         <div class="alert-anchor"><button type="button" id="alertsButton" class="alerts-button" aria-label="Important news alerts" aria-expanded="false" aria-controls="alertsPanel"><span aria-hidden="true">🔔</span><span class="alert-badge" id="alertCount" hidden>0</span></button>
         <section class="alerts-panel" id="alertsPanel" aria-label="Important news alerts" hidden><div class="alerts-heading"><strong>Important updates</strong><button type="button" id="alertsClose" aria-label="Close alerts">×</button></div>
-          <p class="alerts-hint">New high-priority stories since your last check. Alerts work while this page is open, not when closed.</p>
+          <p class="alerts-hint">New high-priority RBI/SEBI releases since your last check. In-app alerts work while SignalDesk is open.</p>
+          <div class="desktop-alert-settings">
+            <div class="desktop-alert-info"><strong>Desktop notifications</strong><p id="desktopAlertStatus" role="status" aria-live="polite">Checking browser support…</p></div>
+            <div class="desktop-alert-controls"><button type="button" id="desktopAlertToggle" class="outline">Enable alerts</button><button type="button" id="desktopAlertTest" class="outline" hidden>Test</button></div>
+            <small>Opt-in · New high-priority RBI/SEBI news only · Every ~5 minutes while this browser page stays open. No alerts after the page is closed.</small>
+          </div>
           <div id="alertsList" class="alerts-list"></div><button type="button" id="clearAlerts" class="alerts-clear">Mark all seen</button></section></div>
       </div></header>
     <div class="content">

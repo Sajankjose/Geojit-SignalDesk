@@ -13,6 +13,110 @@ function loadFeedState(){
  try{const x=JSON.parse(localStorage.getItem(feedStateKey)||"{}");return {known:Array.isArray(x.known)?x.known:[],unread:Array.isArray(x.unread)?x.unread:[]}}catch{return {known:[],unread:[]}}
 }
 let feedState=loadFeedState(),alertsOpen=false;
+// Browser alerts are opt-in and work only while SignalDesk is open.
+// No push service worker, continuous server-side monitor, or OS alerts after close.
+const desktopAlertPrefKey="signaldesk:desktop-alerts-enabled:v1";
+const desktopAlertHistoryKey="signaldesk:desktop-alerts-shown:v1";
+function readDesktopAlertPreference(){
+ try{return localStorage.getItem(desktopAlertPrefKey)==="enabled"}catch{return false}
+}
+let desktopAlertsEnabled=readDesktopAlertPreference();
+function desktopSupported(){
+ return typeof window!=="undefined"&&window.isSecureContext&&typeof window.Notification==="function";
+}
+function desktopAlertsActive(){
+ return desktopAlertsEnabled&&desktopSupported()&&window.Notification.permission==="granted";
+}
+function setDesktopPreference(enabled){
+ desktopAlertsEnabled=!!enabled;
+ try{localStorage.setItem(desktopAlertPrefKey,enabled?"enabled":"disabled")}catch{}
+ renderDesktopAlertControls();
+}
+function renderDesktopAlertControls(){
+ const toggle=$("desktopAlertToggle"),test=$("desktopAlertTest"),status=$("desktopAlertStatus");
+ if(!desktopSupported()){
+  toggle.disabled=true;toggle.textContent="Unavailable";test.hidden=true;
+  status.textContent="Desktop alerts are not supported in this browser or secure context. The in-app bell still works.";
+  return;
+ }
+ const permission=window.Notification.permission;
+ test.hidden=!desktopAlertsActive();
+ toggle.disabled=false;
+ if(desktopAlertsActive()){
+  toggle.textContent="Turn off";
+  status.textContent="On · New high-priority RBI/SEBI news can appear as a browser notification while this page is open.";
+ }else if(permission==="denied"){
+  toggle.textContent=desktopAlertsEnabled?"Turn off":"Browser blocked";
+  toggle.disabled=!desktopAlertsEnabled;
+  status.textContent="Notification access is blocked. To enable it, change SignalDesk's notification permission in browser site settings.";
+ }else{
+  toggle.textContent="Enable alerts";
+  status.textContent="Off · Enable to be notified about newly detected high-priority RBI/SEBI releases.";
+ }
+}
+async function toggleDesktopAlerts(){
+ if(desktopAlertsEnabled){setDesktopPreference(false);return}
+ if(!desktopSupported()){renderDesktopAlertControls();return}
+ if(window.Notification.permission==="denied"){renderDesktopAlertControls();return}
+ try{
+  // Called by a direct user click. Never ask permission on page load.
+  const permission=window.Notification.permission==="granted"?"granted":
+   await window.Notification.requestPermission();
+  setDesktopPreference(permission==="granted");
+  if(permission!=="granted")$("desktopAlertStatus").textContent=permission==="denied"?
+   "Browser notifications were blocked; use site settings if you want to allow them.":
+   "Permission was not granted. The in-app alert bell still works.";
+ }catch{
+  setDesktopPreference(false);
+  $("desktopAlertStatus").textContent="The browser could not enable notifications. The in-app bell is still available.";
+ }
+}
+function showBrowserNotification(title,body,tag){
+ if(!desktopAlertsActive())return false;
+ try{
+  const notification=new window.Notification(title,{
+   body:String(body||"").slice(0,170),tag:String(tag||"signaldesk-update").slice(0,100)
+  });
+  notification.onclick=()=>{
+   try{window.focus()}catch{}
+   navigate("discover");setAlertsOpen(true);
+   try{notification.close()}catch{}
+  };
+  return true;
+ }catch{
+  $("desktopAlertStatus").textContent="The browser could not display an alert. Check your system notification settings; in-app alerts remain available.";
+  return false;
+ }
+}
+function readDesktopNotificationHistory(){
+ try{const ids=JSON.parse(localStorage.getItem(desktopAlertHistoryKey)||"[]");
+  return Array.isArray(ids)?ids.filter(x=>typeof x==="string").slice(-300):[]
+ }catch{return []}
+}
+function notifyNewHighPriority(stories){
+ if(!desktopAlertsActive()||!stories.length)return;
+ const now=Date.now(),shown=new Set(readDesktopNotificationHistory());
+ const fresh=stories.filter(s=>s&&(s.publisher==="RBI"||s.publisher==="SEBI")
+  &&!shown.has(s.id)&&Number.isFinite(Date.parse(s.publishedAt))
+  &&Date.parse(s.publishedAt)<=now
+  &&now-Date.parse(s.publishedAt)<=24*60*60*1000);
+ if(!fresh.length)return;
+ const primary=fresh[0],multiple=fresh.length>1;
+ const title=multiple?"Geojit SignalDesk · "+fresh.length+" new high-priority updates":
+  "Geojit SignalDesk · "+primary.publisher+" update";
+ const body=(multiple?primary.publisher+" · ":"")+primary.title;
+ if(!showBrowserNotification(title,body,"signaldesk-official-"+primary.id))return;
+ const next=[...shown,...fresh.map(s=>s.id)].slice(-300);
+ try{localStorage.setItem(desktopAlertHistoryKey,JSON.stringify(next))}catch{}
+}
+function testDesktopAlert(){
+ if(!desktopAlertsActive()){renderDesktopAlertControls();return}
+ if(showBrowserNotification("Geojit SignalDesk · Test alert",
+  "Desktop notifications are enabled. Future new high-priority RBI/SEBI releases can notify you while this page is open.",
+  "signaldesk-test")){
+  $("desktopAlertStatus").textContent="Test sent. If you cannot see it, check your device's notification settings.";
+ }
+}
 const priorityOf=s=>Math.max(0,Math.min(100,Number(s.priority)||0));
 const important=s=>priorityOf(s)>=77;
 function saveFeedState(){
@@ -40,7 +144,7 @@ function updateAlertUI(){
 }
 function setAlertsOpen(open){
  alertsOpen=open;$("alertsPanel").hidden=!open;$("alertsButton").setAttribute("aria-expanded",String(open));
- if(open)updateAlertUI();
+ if(open){updateAlertUI();renderDesktopAlertControls()}
 }
 function registerFeed(newStories){
  if(!newStories.length)return;
@@ -56,6 +160,7 @@ function registerFeed(newStories){
  const newImportant=additions.filter(x=>!firstVisit&&important(x)&&feedState.unread.includes(x.id));
  $("feedAlertStatus").hidden=newImportant.length===0;
  if(newImportant.length)$("feedAlertStatus").textContent=newImportant.length+" important new update"+(newImportant.length===1?"":"s")+" since your last check. Open the alert bell to review.";
+ notifyNewHighPriority(newImportant);
 }
 const parseTags=input=>[...new Set(String(input||"").split(/[\s,]+/).map(x=>x.trim()).filter(x=>/^#[a-zA-Z][a-zA-Z0-9_]{1,29}$/.test(x)))].slice(0,2);
 const defaultTags=story=>Array.isArray(story.suggestedHashtags)?parseTags(story.suggestedHashtags.join(" ")):({RBI:["#RBI"],SEBI:["#SEBI"]}[story.publisher]||[]);
@@ -649,6 +754,8 @@ $("rankingTabs").addEventListener("click",e=>{
  rankMode=b.dataset.rank;document.querySelectorAll("button[data-rank]").forEach(x=>x.classList.toggle("selected",x===b));renderStories();
 });
 $("alertsButton").addEventListener("click",()=>setAlertsOpen(!alertsOpen));
+$("desktopAlertToggle").addEventListener("click",toggleDesktopAlerts);
+$("desktopAlertTest").addEventListener("click",testDesktopAlert);
 $("alertsClose").addEventListener("click",()=>setAlertsOpen(false));
 $("clearAlerts").addEventListener("click",()=>{
  feedState.unread=[];saveFeedState();updateAlertUI();setAlertsOpen(false);renderStories();
@@ -740,6 +847,8 @@ $("saveManagerKey").addEventListener("click",async()=>{
 $("aiGenerate").addEventListener("click",generate);
 const initialView=location.hash.replace("#","");
 updateComposeConnection();
+renderDesktopAlertControls();
 updateNavCounts();navigate(initialView,false);refresh();
-setInterval(()=>{if(!document.hidden)refresh()},5*60*1000);
+setInterval(()=>{if(!document.hidden||desktopAlertsActive())refresh()},5*60*1000);
+window.addEventListener("storage",event=>{if(event.key===desktopAlertPrefKey){desktopAlertsEnabled=readDesktopAlertPreference();renderDesktopAlertControls()}});
 })();

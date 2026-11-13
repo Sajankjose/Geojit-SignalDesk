@@ -295,3 +295,15 @@ footer{margin-top:35px;border-top:1px solid var(--line);padding:18px 0;color:#99
 .review-eligibility.review-warning{color:#98612b}
 .publishing-details[hidden]{display:none!important}
 .review-actions button:disabled{cursor:not-allowed;opacity:.58}
+
+
+/* Optional browser notifications: compact controls inside existing bell panel. */
+.desktop-alert-settings{background:#f5faf7;border:1px solid #d9e8de;padding:11px 12px;border-radius:10px;margin:12px 0}
+.desktop-alert-info strong{font-size:11px;color:var(--deep);font-weight:800}
+.desktop-alert-info p{font-size:10px;color:#557363;line-height:1.6;margin:4px 0 0}
+.desktop-alert-controls{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0 8px}
+.desktop-alert-controls button{font-size:10px;font-weight:750;line-height:1.2;padding:8px 11px;border-radius:7px;background:white;border:1px solid #d7e5db;color:var(--deep)}
+.desktop-alert-controls button:hover:not(:disabled){background:#eaf4ec}
+.desktop-alert-controls button:disabled{opacity:.58;cursor:not-allowed}
+.desktop-alert-settings small{display:block;font-size:9px;line-height:1.65;color:#71867a}
+.desktop-alert-controls button[hidden]{display:none!important}
