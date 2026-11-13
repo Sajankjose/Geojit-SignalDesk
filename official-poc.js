@@ -603,32 +603,28 @@ async function checkComposerEndpoint(){
 async function connectComposerAI(){
  const candidate=$("composeManagerKey").value.trim();
  if(!candidate){
-  composeNotice(managerKey?"AI is already connected for this browser tab.":"Enter your manager access key to connect AI.",!managerKey);
-  updateComposeConnection();
-  return !!managerKey;
+  if(!managerKey){
+   $("composeCredentials").open=true;
+   composeNotice("AI not connected. Enter the manager access key once on this computer.",true);
+   updateComposeConnection();return false;
+  }
+  if(aiConnectionState==="connected"){
+   composeNotice("AI is connected and ready for drafting in this browser tab.");
+   updateComposeConnection();return true;
+  }
  }
  $("composeConnect").disabled=true;$("composeConnect").textContent="Checking…";
- try{
-  let response;
-  try{
-   response=await fetch("/.netlify/functions/ai-status",{
-    headers:{"x-manager-key":candidate},cache:"no-store",signal:AbortSignal.timeout(12000)
-   });
-  }catch(e){
-   $("composeCredentials").open=true;
-   throw Error(e?.name==="TimeoutError"||e?.name==="AbortError"?
-    "AI connection timed out on this computer. Click Check AI connection to test Netlify reachability":
-    "This computer could not reach the AI endpoint. Click Check AI connection; check VPN, firewall or browser extensions if it fails");
-  }
-  let result;try{result=await response.json()}catch{throw Error("AI connection check did not return a valid response.")}
-  if(!response.ok||!result.ready)throw Error(result.error||"The AI service is not configured.");
-  managerKey=candidate;
-  try{sessionStorage.setItem("signaldesk:manager:key",managerKey)}catch{}
+ const verified=await verifyAIConnection(candidate||managerKey);
+ if(verified){
   $("composeManagerKey").value="";$("composeCredentials").open=false;
-  composeNotice("AI connected. You can generate two editable versions.");
-  updateComposeConnection();return true;
- }catch(e){composeNotice("Could not connect AI: "+String(e.message||e)+".",true);return false}
- finally{$("composeConnect").disabled=false;$("composeConnect").textContent="Connect"}
+  composeNotice("AI connected and verified with Netlify. You can generate tweet variants.");
+ }else{
+  $("composeCredentials").open=true;
+  composeNotice("Could not connect AI: "+(aiConnectionDetail||"Connection could not be verified.")+".",true);
+ }
+ $("composeConnect").disabled=false;
+ updateComposeConnection();
+ return verified;
 }
 const getHost=url=>{try{return new URL(url).hostname.replace(/^www\./,"")}catch{return "User source"}};
 async function getComposerStory(useAI){
@@ -660,7 +656,7 @@ async function getComposerStory(useAI){
  const response=await fetch("/.netlify/functions/news-preview",{method:"POST",headers:{"Content-Type":"application/json","x-manager-key":managerKey},body:JSON.stringify({url}),cache:"no-store"});
  let result;try{result=await response.json()}catch{throw Error("This publisher did not return a usable preview. Paste the headline and a few facts instead.")}
  if(!response.ok){
-  if(response.status===401){managerKey="";try{sessionStorage.removeItem("signaldesk:manager:key")}catch{}updateComposeConnection();$("composeCredentials").open=true}
+  if(response.status===401){disconnectAI();setAIConnectionState("error","Manager access was rejected. Reconnect with your current key.");$("composeCredentials").open=true}
   showManualLinkHelp(result.error||"This source blocked its preview. Paste the headline and key facts instead.");
   throw Error(result.error||"This source could not be previewed. Paste the headline and key facts instead.");
  }
@@ -678,13 +674,13 @@ async function submitComposer(useAI){
    $("composeHeadline").focus();return;
   }
  }
- if(useAI&&!managerKey){
-  if($("composeManagerKey").value.trim()){
+ if(useAI&&aiConnectionState!=="connected"){
+  if($("composeManagerKey").value.trim()||managerKey){
    const connected=await connectComposerAI();
    if(!connected)return;
   }else{
    $("composeCredentials").open=true;
-   composeNotice("Enter your manager access key here, then click Generate again. No need to open Studio.",true);
+   composeNotice("AI not connected. Enter your manager access key, then click Generate again.",true);
    $("composeManagerKey").focus();return;
   }
  }
