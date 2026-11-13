@@ -60,7 +60,7 @@ test("MarketsMojo POC UI shows editor input and real source link, not a fake aut
 });
 test("All new MarketsMojo drafts remain internal demos and AI receives user-provided facts",()=>{
  assert.match(js,/demoOnly:!!s\.demoOnly/);
- assert.match(js,/userPasted:!!d\.manual\|\|!!d\.source\.curatedPOC/);
+ assert.match(js,/userPasted:!!d\.manual\|\|isMojoPOC\(d\)/);
  // POC drafts can be marked ready for INTERNAL review, not for X publication.
  assert.match(js,/d\.status=demo\?"Ready for review":"Ready"/);
  assert.match(js,/\$\("markReady"\)\.disabled=!!blocker/);
