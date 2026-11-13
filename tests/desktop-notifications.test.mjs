@@ -28,7 +28,7 @@ function environment({support=true,permission="default",savedPreference="disable
  const ctx=createContext({window:win,document:{hidden:false},localStorage:{
   getItem:key=>store.has(key)?store.get(key):null,
   setItem:(key,value)=>store.set(key,String(value))
- },feedStateKey:"signaldesk:official-feed-tracking:v1",feedState:{known:[],unread:[]},$:id=>$(id),el:(tag,cls,text)=>({tag,cls,text,addEventListener(){},append(){}}),
+ },payload:{stories:[],sources:[],warnings:[]},feedStateKey:"signaldesk:official-feed-tracking:v1",feedState:{known:[],unread:[]},$:id=>$(id),el:(tag,cls,text)=>({tag,cls,text,addEventListener(){},append(){}}),
   append(){},navigate(){},renderStories(){},startDraft(){},Date,Math,JSON,Set,Number,String,Array});
  runInContext(script.slice(first,last),ctx);
  return {ctx,calls,store,$,execute:s=>runInContext(s,ctx)};
