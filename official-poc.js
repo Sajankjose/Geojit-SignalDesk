@@ -223,6 +223,84 @@ function renderHashtagSuggestions(d){
 const validUrl=u=>{try{const v=new URL(u);return v.protocol==="https:"?v.href:""}catch{return ""}};
 const safeKey=()=>{try{return sessionStorage.getItem("signaldesk:manager:key")||""}catch{return ""}};
 let managerKey=safeKey();
+let aiConnectionState=managerKey?"checking":"disconnected";
+let aiConnectionDetail="";
+let aiStatusRequestSeq=0;
+function renderAIConnectionState(){
+ const states={
+  connected:{label:"AI connected",detail:"Verified with Netlify for this browser tab. You can generate AI tweet variants."},
+  disconnected:{label:"AI not connected",detail:"Enter your manager access key to enable AI drafting. Manual editing still works."},
+  checking:{label:"Checking AI connection…",detail:"Verifying your saved manager access with Netlify. Please wait."},
+  error:{label:"AI connection issue",detail:"Connection could not be verified on this computer. Recheck or connect with your manager key."}
+ };
+ const active=states[aiConnectionState]||states.disconnected;
+ const detail=aiConnectionDetail||active.detail;
+ for(const prefix of ["studio","compose"]){
+  $(prefix+"AIStatus").dataset.state=aiConnectionState;
+  $(prefix+"AIStatusLabel").textContent=active.label;
+  $(prefix+"AIStatusDetail").textContent=detail;
+ }
+ $("studioAISummaryState").textContent=active.label;
+ $("composeConnectionState").textContent=active.label;
+ $("studioAIRecheck").hidden=!managerKey;
+ $("studioAIDisconnect").hidden=!managerKey;
+ if(!$("saveManagerKey").disabled)$("saveManagerKey").textContent=aiConnectionState==="connected"?"Change key":"Connect AI";
+ if(!$("composeConnect").disabled)$("composeConnect").textContent=aiConnectionState==="connected"?"Change key":"Connect";
+}
+function setAIConnectionState(state,detail=""){
+ aiConnectionState=state;aiConnectionDetail=detail;
+ renderAIConnectionState();
+}
+function disconnectAI(){
+ ++aiStatusRequestSeq;
+ managerKey="";
+ try{sessionStorage.removeItem("signaldesk:manager:key")}catch{}
+ $("managerKey").value="";$("composeManagerKey").value="";
+ setAIConnectionState("disconnected","Disconnected in this browser tab. Enter your manager key to use AI again.");
+}
+// Successful authentication confirms manager access and that Netlify has an
+// OpenAI key configured. It does not call the paid model or guarantee quota.
+async function verifyAIConnection(candidate,{remember=true}={}){
+ if(!candidate){setAIConnectionState("disconnected");return false}
+ const seq=++aiStatusRequestSeq;
+ const oldKey=managerKey,oldState=aiConnectionState;
+ setAIConnectionState("checking");
+ try{
+  let response;
+  try{response=await fetch("/.netlify/functions/ai-status",{
+    headers:{"x-manager-key":candidate},cache:"no-store",signal:AbortSignal.timeout(12000)
+  })}catch(e){
+   throw Error(e?.name==="TimeoutError"||e?.name==="AbortError"?
+    "Netlify did not respond within 12 seconds. Check network, VPN or firewall.":
+    "This computer could not reach the AI endpoint. Check the network and browser security settings.");
+  }
+  let info;
+  try{info=await response.json()}catch{throw Error("The AI status endpoint returned an unreadable response.")}
+  if(!response.ok||!info.ready){
+   const err=Error(info.error||"AI connection was not accepted by Netlify.");
+   err.invalidKey=response.status===401;
+   throw err;
+  }
+  if(seq!==aiStatusRequestSeq)return false;
+  managerKey=candidate;
+  if(remember){try{sessionStorage.setItem("signaldesk:manager:key",candidate)}catch{}}
+  setAIConnectionState("connected");
+  return true;
+ }catch(e){
+  if(seq!==aiStatusRequestSeq)return false;
+  if(oldKey&&oldState==="connected"&&oldKey!==candidate){
+   setAIConnectionState("connected","Your earlier connection remains active. The new key could not be verified: "+String(e.message||e));
+  }else{
+   if(e.invalidKey&&managerKey===candidate){
+    managerKey="";
+    try{sessionStorage.removeItem("signaldesk:manager:key")}catch{}
+   }
+   setAIConnectionState("error",String(e.message||e));
+  }
+  return false;
+ }
+}
+
 function persist(){try{localStorage.setItem(storeKey,JSON.stringify(workspace))}catch(e){notify("Browser storage is unavailable. Changes may not survive a refresh.",true)}updateNavCounts()}
 function notify(message,error=false){const n=$("editorMessage");if(n){n.textContent=message;n.classList.toggle("error",error)}}
 const dateFmt=(v,withYear=false,dateOnly=false)=>{
@@ -464,7 +542,7 @@ function canPreviewUrl(raw){
  }catch{return false}
 }
 function updateComposeConnection(){
- $("composeConnectionState").textContent=managerKey?"Connected for this tab ✓":"(connect once per browser tab)";
+ renderAIConnectionState();
 }
 function showManualLinkHelp(message){
  $("composeFallback").open=true;
