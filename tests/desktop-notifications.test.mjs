@@ -74,7 +74,7 @@ test("Never send a desktop notification for 2-day-old headlines or low-ranked ne
  const e=environment({permission:"granted"});
  await e.execute("toggleDesktopAlerts()");
  e.execute("registerFeed("+JSON.stringify([story("initial",1)])+")");
- e.execute("registerFeed("+JSON.stringify([story("initial",1),story("old",48,95),story("low",1,30)])+")");
+ e.execute("registerFeed("+JSON.stringify([story("initial",1),story("old",48*60,95),story("low",1,30)])+")");
  assert.equal(e.calls.notifications.length,0);
  assert.equal(e.execute("feedState.unread.length"),2,"In-app history may contain more news than browser alerts");
 });
