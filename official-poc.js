@@ -497,7 +497,7 @@ function renderStudio(){
  // news provider the narrative subject. They must be regenerated, not silently
  // transformed into an asserted Geojit research opinion.
  if(d.source.curatedPOC&&!d.editorialVoiceV2){
-  const wronglyFramed=["news","insight"].some(v=>/\\bmarketsmojo\\b/i.test(String(d.variants?.[v]||"")));
+  const wronglyFramed=["news","insight"].some(v=>/\bmarketsmojo\b/i.test(String(d.variants?.[v]||"")));
   if(wronglyFramed){
    d.variants={news:"",insight:""};d.variant="news";
    d.contextStatus="needs_source";
