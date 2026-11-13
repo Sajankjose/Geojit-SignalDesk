@@ -455,7 +455,10 @@ function buildText(d){
  if(!d)return"";
  if(d.status==="Published"&&d.publishedText)return d.publishedText;
  const prefix=(workspace.disclosure||"").trim(),body=(d.variants[d.variant]||"").trim();
- const from=d.manual&&!validUrl(d.source.url)?"Source: User-provided text (not verified)":
+ // For internal MarketsMojo concept drafts, attribution is kept in Studio's
+ // source-reference panel rather than presented as the author of Geojit's text.
+ // These drafts are disabled for external publishing until licensing is cleared.
+ const from=d.source.curatedPOC?"":d.manual&&!validUrl(d.source.url)?"Source: User-provided text (not verified)":
  "Source: "+d.source.publisher+(d.sourceLink&&validUrl(d.source.url)?" "+d.source.url:"");
  const uniqueTags=(Array.isArray(d.hashtags)?parseTags(d.hashtags.join(" ")):defaultTags(d.source))
   .filter(tag=>!body.toLowerCase().includes(tag.toLowerCase()));
@@ -490,6 +493,20 @@ function renderStudio(){
  if(!has)return;
  if(!current())selectedId=entries[0].id;
  const d=current();if(!d)return;
+ // One-time safety migration for previously generated POC posts that made the
+ // news provider the narrative subject. They must be regenerated, not silently
+ // transformed into an asserted Geojit research opinion.
+ if(d.source.curatedPOC&&!d.editorialVoiceV2){
+  const wronglyFramed=["news","insight"].some(v=>/\bmarketsmojo\b/i.test(String(d.variants?.[v]||"")));
+  if(wronglyFramed){
+   d.variants={news:"",insight:""};d.variant="news";
+   d.contextStatus="needs_source";
+   d.contextNote="Regenerate using the updated Geojit voice. Verify the source facts before writing an explanation.";
+   d.risks=[...new Set(["An earlier draft used the news provider's voice. It was cleared for regeneration.",...(d.risks||[])])].slice(0,9);
+   d.status="Draft";d.verified=false;
+  }
+  d.editorialVoiceV2=true;persist();
+ }
  const sel=$("draftSelect");sel.replaceChildren();
  for(const x of entries){
   const opt=el("option","",x.source.publisher+" · "+x.source.title.slice(0,90));
@@ -517,7 +534,7 @@ function renderStudio(){
  if(d.source.provider==="PIB RSS")
   $("evidenceBasis").textContent="AI input: PIB press-release headline and short summary only. Verify the original and attribute Press Information Bureau.";
  if(d.source.curatedPOC)
-  $("evidenceBasis").textContent="AI input: editor-curated MarketsMojo headline and verified facts only. No article was fetched by SignalDesk. Demonstration only.";
+  $("evidenceBasis").textContent="Geojit editorial voice: only editor-supplied facts are used. MarketsMojo remains a source reference, never the author of the draft. No article was fetched by SignalDesk. Demo only.";
  const note=$("contextNotice");
  note.hidden=!(d.variant==="insight"&&d.contextStatus==="needs_source");
  note.textContent=d.contextStatus==="needs_source"?
