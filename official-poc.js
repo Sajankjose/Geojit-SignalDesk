@@ -496,6 +496,32 @@ function setComposerMode(mode){
  $("composeTextFields").hidden=composerMode!=="text";
  document.querySelectorAll("button[data-compose-mode]").forEach(b=>b.classList.toggle("selected",b.dataset.composeMode===composerMode));
 }
+// This diagnostic intentionally sends NO manager key. A 401 from the
+// unauthenticated endpoint is the expected, healthy reachability result.
+async function checkComposerEndpoint(){
+ const btn=$("composeCheckEndpoint"),output=$("composeDiagnostic");
+ btn.disabled=true;btn.textContent="Checking…";output.textContent="Checking whether this browser can reach the SignalDesk AI function…";
+ try{
+  const response=await fetch("/.netlify/functions/ai-status",{
+   cache:"no-store",signal:AbortSignal.timeout(12000)
+  });
+  if(response.status===401||response.ok){
+   output.textContent="AI endpoint reachable from this computer (HTTP "+response.status+"). The expected HTTP 401 means access is protected. Now connect with your manager key; no separate OpenAI key is needed.";
+  }else if(response.status===503){
+   output.textContent="AI endpoint reachable, but Netlify reports that its server configuration is incomplete (HTTP 503). Check MANAGER_ACCESS_KEY and OPENAI_API_KEY in Netlify Functions.";
+  }else if(response.status===404){
+   output.textContent="This computer reached Netlify, but the AI function was not found (HTTP 404). Check the production deploy and function URL.";
+  }else if(response.status===403||response.status===407){
+   output.textContent="The AI function returned HTTP "+response.status+". A company proxy or security filter may be blocking the endpoint; ask IT to review this HTTPS URL.";
+  }else{
+   output.textContent="The AI function responded with HTTP "+response.status+". Try a hard refresh; if it persists, check the Netlify function logs.";
+  }
+ }catch(e){
+  output.textContent=e?.name==="TimeoutError"||e?.name==="AbortError"?
+   "The AI endpoint did not respond within 12 seconds from this computer. Check network, VPN and corporate firewall, or try another network.":
+   "This browser could not reach the AI endpoint. Check network/VPN, Chrome security extensions or company web filtering. You can also open the endpoint test link; no key is included.";
+ }finally{btn.disabled=false;btn.textContent="Check AI connection"}
+}
 async function connectComposerAI(){
  const candidate=$("composeManagerKey").value.trim();
  if(!candidate){
@@ -505,7 +531,17 @@ async function connectComposerAI(){
  }
  $("composeConnect").disabled=true;$("composeConnect").textContent="Checking…";
  try{
-  const response=await fetch("/.netlify/functions/ai-status",{headers:{"x-manager-key":candidate},cache:"no-store"});
+  let response;
+  try{
+   response=await fetch("/.netlify/functions/ai-status",{
+    headers:{"x-manager-key":candidate},cache:"no-store",signal:AbortSignal.timeout(12000)
+   });
+  }catch(e){
+   $("composeCredentials").open=true;
+   throw Error(e?.name==="TimeoutError"||e?.name==="AbortError"?
+    "AI connection timed out on this computer. Click Check AI connection to test Netlify reachability":
+    "This computer could not reach the AI endpoint. Click Check AI connection; check VPN, firewall or browser extensions if it fails");
+  }
   let result;try{result=await response.json()}catch{throw Error("AI connection check did not return a valid response.")}
   if(!response.ok||!result.ready)throw Error(result.error||"The AI service is not configured.");
   managerKey=candidate;
@@ -513,7 +549,7 @@ async function connectComposerAI(){
   $("composeManagerKey").value="";$("composeCredentials").open=false;
   composeNotice("AI connected. You can generate two editable versions.");
   updateComposeConnection();return true;
- }catch(e){composeNotice("Could not connect AI: "+String(e.message||e)+". Check Netlify settings or try again.",true);return false}
+ }catch(e){composeNotice("Could not connect AI: "+String(e.message||e)+".",true);return false}
  finally{$("composeConnect").disabled=false;$("composeConnect").textContent="Connect"}
 }
 const getHost=url=>{try{return new URL(url).hostname.replace(/^www\./,"")}catch{return "User source"}};
@@ -774,6 +810,7 @@ $("composeURL").addEventListener("input",updateComposeLinkHelp);
 $("composeClose").addEventListener("click",()=>composerOpen(false));
 document.querySelectorAll("button[data-compose-mode]").forEach(b=>b.addEventListener("click",()=>setComposerMode(b.dataset.composeMode)));
 $("composeConnect").addEventListener("click",connectComposerAI);
+$("composeCheckEndpoint").addEventListener("click",checkComposerEndpoint);
 $("composeGenerate").addEventListener("click",()=>submitComposer(true));
 $("composeManual").addEventListener("click",()=>submitComposer(false));
 $("manualSourceURL").addEventListener("change",e=>{

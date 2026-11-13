@@ -316,3 +316,11 @@ footer{margin-top:35px;border-top:1px solid var(--line);padding:18px 0;color:#99
 .desktop-alert-help summary{font-size:10px;color:#006357;font-weight:800;cursor:pointer}
 .desktop-alert-help p{font-size:10px;line-height:1.65;color:#5d7167;margin:7px 0 0}
 @media(max-width:640px){.desktop-test-toast{left:14px;right:14px;bottom:14px;max-width:none}}
+
+
+/* Diagnose a second computer's connectivity without entering or exposing keys. */
+.compose-ai-tools{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:9px}
+.compose-ai-tools button{font-size:10px;font-weight:700;padding:7px 10px;border-radius:7px}
+.compose-ai-tools a{font-size:10px;text-decoration:underline;text-underline-offset:2px;color:#076657}
+.compose-ai-tools button:disabled{opacity:.6;cursor:wait}
+.compose-diagnostic{font-size:10px;line-height:1.7;color:#58786b;margin:7px 0 2px}
