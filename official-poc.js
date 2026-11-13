@@ -534,7 +534,7 @@ function renderStudio(){
  if(d.source.provider==="PIB RSS")
   $("evidenceBasis").textContent="AI input: PIB press-release headline and short summary only. Verify the original and attribute Press Information Bureau.";
  if(d.source.curatedPOC)
-  $("evidenceBasis").textContent="Geojit editorial voice: only editor-supplied facts are used. MarketsMojo remains a source reference, never the author of the draft. No article was fetched. Demo only.";
+  $("evidenceBasis").textContent="Geojit editorial voice: only editor-supplied facts are used. MarketsMojo remains a source reference, never the author of the draft. No article was fetched by SignalDesk. Demo only.";
  const note=$("contextNotice");
  note.hidden=!(d.variant==="insight"&&d.contextStatus==="needs_source");
  note.textContent=d.contextStatus==="needs_source"?
