@@ -288,3 +288,10 @@ footer{margin-top:35px;border-top:1px solid var(--line);padding:18px 0;color:#99
 .mojo-remove{border:0;background:transparent;color:#756b74;padding:8px 4px;font-size:10px;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .studio-demo-notice{border-left:3px solid #c29b59;border-radius:0 7px 7px 0;background:#fff8ee;padding:11px 12px;margin:13px 0;color:#75593a;font-size:11px;line-height:1.65}
 @media(max-width:760px){.mojo-panel-head{align-items:stretch;flex-direction:column}.mojo-open-source{align-self:flex-start}.mojo-panel-bottom{align-items:stretch;flex-direction:column}.mojo-panel-bottom>button{align-self:flex-start}.mojo-form-grid{grid-template-columns:1fr}.mojo-form-footer>div{width:100%}}
+
+/* Review readiness: tell editors why an action is blocked rather than silently
+   leaving a grey button. POC approvals are strictly internal to this browser. */
+.review-eligibility{margin:10px 0 2px;color:#14685a;font-size:11px;line-height:1.6}
+.review-eligibility.review-warning{color:#98612b}
+.publishing-details[hidden]{display:none!important}
+.review-actions button:disabled{cursor:not-allowed;opacity:.58}
