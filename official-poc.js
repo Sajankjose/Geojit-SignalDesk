@@ -71,12 +71,21 @@ async function toggleDesktopAlerts(){
   $("desktopAlertStatus").textContent="The browser could not enable notifications. The in-app bell is still available.";
  }
 }
-function showBrowserNotification(title,body,tag){
+function showBrowserNotification(title,body,tag,onDeliveryEvent){
  if(!desktopAlertsActive())return false;
  try{
+  // Creating a Notification only confirms that Chrome accepted the request.
+  // Windows banner delivery can still be suppressed by notification settings.
   const notification=new window.Notification(title,{
    body:String(body||"").slice(0,170),tag:String(tag||"signaldesk-update").slice(0,100)
   });
+  if(typeof onDeliveryEvent==="function"){
+   notification.onshow=()=>onDeliveryEvent("shown");
+   notification.onerror=()=>onDeliveryEvent("error");
+  }else{
+   notification.onerror=()=>{$("desktopAlertStatus").textContent=
+    "A desktop notification could not be displayed. Check Chrome and Windows notification settings; the in-app bell still works."};
+  }
   notification.onclick=()=>{
    try{window.focus()}catch{}
    navigate("discover");setAlertsOpen(true);
@@ -84,7 +93,8 @@ function showBrowserNotification(title,body,tag){
   };
   return true;
  }catch{
-  $("desktopAlertStatus").textContent="The browser could not display an alert. Check your system notification settings; in-app alerts remain available.";
+  $("desktopAlertStatus").textContent="Chrome could not create a notification. Check browser and Windows permissions; the in-app bell still works.";
+  if(typeof onDeliveryEvent==="function")onDeliveryEvent("error");
   return false;
  }
 }
@@ -109,12 +119,42 @@ function notifyNewHighPriority(stories){
  const next=[...shown,...fresh.map(s=>s.id)].slice(-300);
  try{localStorage.setItem(desktopAlertHistoryKey,JSON.stringify(next))}catch{}
 }
+function showDesktopTestToast(message){
+ // Always give immediate, visible IN-PAGE feedback, separate from the native
+ // Windows notification whose display cannot be guaranteed by this website.
+ const toast=$("desktopTestToast");
+ if(!toast)return;
+ toast.textContent=message;
+ toast.hidden=false;
+ if(typeof setTimeout==="function"){
+  if(desktopTestToastTimeout)clearTimeout(desktopTestToastTimeout);
+  desktopTestToastTimeout=setTimeout(()=>{toast.hidden=true},9000);
+ }
+}
+let desktopTestToastTimeout=null;
 function testDesktopAlert(){
- if(!desktopAlertsActive()){renderDesktopAlertControls();return}
- if(showBrowserNotification("Geojit SignalDesk · Test alert",
-  "Desktop notifications are enabled. Future new high-priority RBI/SEBI releases can notify you while this page is open.",
-  "signaldesk-test")){
-  $("desktopAlertStatus").textContent="Test sent. If you cannot see it, check your device's notification settings.";
+ if(!desktopAlertsActive()){
+  renderDesktopAlertControls();
+  showDesktopTestToast("Desktop alerts are not enabled in Chrome. Use Enable alerts in the bell menu.");
+  return;
+ }
+ // A unique tag avoids Chrome silently replacing an earlier test notification.
+ const tag="signaldesk-test-"+Date.now();
+ const message="SignalDesk test confirmed in this page. Requesting a Chrome desktop notification…";
+ showDesktopTestToast(message);
+ const sent=showBrowserNotification("Geojit SignalDesk · Test alert",
+  "This is a test notification. New high-priority RBI/SEBI alerts can appear while SignalDesk stays open.",
+  tag,event=>{
+   if(event==="shown"){
+    $("desktopAlertStatus").textContent="Chrome reported the notification was shown. If there was no popup, check Windows Notification Centre, Chrome banners and Do not disturb.";
+   }else{
+    $("desktopAlertStatus").textContent="Chrome reported a notification display error. Check Windows Notifications → Google Chrome, banners and Do not disturb.";
+    showDesktopTestToast("Desktop notification display failed. The SignalDesk in-page test is working; check Windows notifications.");
+   }
+  });
+ if(sent){
+  $("desktopAlertStatus").textContent="Test requested from Chrome. A Windows popup is not guaranteed. If you see nothing, check Windows Notifications → Google Chrome, banners and Do not disturb.";
+  showDesktopTestToast("SignalDesk in-page test succeeded. Chrome was asked to show a separate desktop popup; check Windows notification settings if it is missing.");
  }
 }
 const priorityOf=s=>Math.max(0,Math.min(100,Number(s.priority)||0));
