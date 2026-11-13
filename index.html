@@ -18,6 +18,7 @@
     </nav>
     <div class="sidebar-foot"><span class="signal"></span>Editorial POC<small>Human-reviewed · Manual X posting</small></div>
   </aside>
+  <div class="desktop-test-toast" id="desktopTestToast" role="status" aria-live="polite" hidden></div>
   <main class="main">
     <header class="topbar"><div><div class="eyebrow">GEOJIT / EDITORIAL WORKSPACE</div><strong id="topbarTitle">Discover</strong></div>
       <div class="top-actions"><span class="today-date" id="clock"></span>
@@ -28,6 +29,7 @@
             <div class="desktop-alert-info"><strong>Desktop notifications</strong><p id="desktopAlertStatus" role="status" aria-live="polite">Checking browser support…</p></div>
             <div class="desktop-alert-controls"><button type="button" id="desktopAlertToggle" class="outline">Enable alerts</button><button type="button" id="desktopAlertTest" class="outline" hidden>Test</button></div>
             <small>Opt-in · New high-priority RBI/SEBI news only · Every ~5 minutes while this browser page stays open. No alerts after the page is closed.</small>
+            <details class="desktop-alert-help"><summary>Not seeing a desktop popup?</summary><p>Chrome permission alone does not guarantee a visible Windows banner.</p><p>In Windows, open <strong>Settings → System → Notifications</strong>. Turn notifications and <strong>Google Chrome</strong> banners on, then switch <strong>Do not disturb</strong> off.</p><p>In Chrome, select the site-controls icon beside the website address and allow notifications. You can also check the Windows Notification Centre for alerts that did not appear as banners.</p></details>
           </div>
           <div id="alertsList" class="alerts-list"></div><button type="button" id="clearAlerts" class="alerts-clear">Mark all seen</button></section></div>
       </div></header>
