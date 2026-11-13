@@ -1,7 +1,7 @@
 // Defensive quality checks applied AFTER the model returns a draft.
 // They do not fact-check, but enforce Geojit's independent, evidence-led tone.
 const vagueStart=/^(?:this|these|it|the move|the development|the announcement|the initiative|such a move|such an initiative|the decision)\b/i;
-const unsupportedEffects=/\b(?:boost(?:ing|s)? investor confidence|improv(?:e|es|ing) the (?:security and )?efficiency of (?:india'?s )?financial system|boost(?:ing|s)? operational resilience|will benefit investors|will drive market growth|will lift markets|will boost stock prices|is set to transform|can aid investors?|(?:reflects?|indicates?|suggests?) (?:changes? in |a shift in )?investor sentiment|understanding these trends can)\b/i;
+const unsupportedEffects=/\b(?:boost(?:ing|s)? investor confidence|improv(?:e|es|ing) the (?:security and )?efficiency of (?:india'?s )?financial system|boost(?:ing|s)? operational resilience|will benefit investors|will drive market growth|will lift markets|will boost stock prices|is set to transform|can aid investors?|(?:reflects?|indicates?|suggests?) (?:changes? in |a shift in )?investor sentiment|understanding these trends can|(?:can|could|may|might)\s+(?:indicate|suggest|signal|reflect))\b/i;
 const unverifiedInHouse=/\b(?:geojit(?:'s)?\s+(?:view|research|analysts?|experts?|outlook|observations?|recommends?|believes?|expects?|predicts?)|(?:we|our analysts)\s+(?:believe|forecast|expect|recommend|predict))\b/i;
 const nonEditorialPublishers=new Set(["marketsmojo","reuters","bloomberg","business standard","livemint","mint","moneycontrol","cnbc","economic times","financial express","yahoo finance","newsapi"]);
 const normalize=s=>String(s||"").replace(/\s+/g," ").trim().replace(/^["“]+|["”]+$/g,"").trim();
