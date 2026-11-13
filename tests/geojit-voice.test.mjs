@@ -82,7 +82,7 @@ test("MarketsMojo POC tweet preview omits provider credit from the body while ke
  assert.match(ui,/studioSourceLink/);
  assert.match(ui,/editorialVoiceV2/);
  assert.match(ui,/earlier draft used the news provider's voice/);
- assert.match(ui,/if\(d\.source\.demoOnly\)/);
+ assert.match(ui,/if\(!d\|\|isMojoPOC\(d\)\|\|d\.status!=="Ready"\)return/);
 });
 test("AI endpoint sanitizes publisher framing after a model response before sending it to browser",async()=>{
  const oldFetch=globalThis.fetch;
