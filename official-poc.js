@@ -534,7 +534,7 @@ function renderStudio(){
  // One-time safety migration for previously generated POC posts that made the
  // news provider the narrative subject. They must be regenerated, not silently
  // transformed into an asserted Geojit research opinion.
- if(d.source.curatedPOC&&!d.editorialVoiceV2){
+ if(isMojoPOC(d)&&d.status!=="Published"&&!d.editorialVoiceV2){
   const wronglyFramed=["news","insight"].some(v=>/\bmarketsmojo\b/i.test(String(d.variants?.[v]||"")));
   if(wronglyFramed){
    d.variants={news:"",insight:""};d.variant="news";
@@ -543,6 +543,7 @@ function renderStudio(){
    d.risks=[...new Set(["An earlier draft used the news provider's voice. It was cleared for regeneration.",...(d.risks||[])])].slice(0,9);
    d.status="Draft";d.verified=false;
   }
+  d.source.demoOnly=true;
   d.editorialVoiceV2=true;persist();
  }
  const sel=$("draftSelect");sel.replaceChildren();
@@ -552,7 +553,7 @@ function renderStudio(){
  }
  $("studioStoryTitle").textContent=d.source.title;
  $("studioSourceMeta").textContent=d.source.publisher+" · "+(d.source.curatedPOC?"Manually curated for POC":d.source.publishedAtEstimated?"Publication date not supplied":dateFmt(d.source.publishedAt,true,d.source.dateOnly))+" · "+d.source.category;
- $("studioDemoNotice").hidden=!d.source.demoOnly;
+ $("studioDemoNotice").hidden=!isMojoPOC(d);
  $("studioSourceLink").href=validUrl(d.source.url)||"#";
  $("studioSourceLink").hidden=!validUrl(d.source.url);
  $("manualSourceEdit").hidden=!d.manual;
@@ -571,7 +572,7 @@ function renderStudio(){
  (basis?"AI input: official RSS headline and excerpt, not the full release. Verify original.":"AI input: headline only, not the full release. More source detail may be needed.");
  if(d.source.provider==="PIB RSS")
   $("evidenceBasis").textContent="AI input: PIB press-release headline and short summary only. Verify the original and attribute Press Information Bureau.";
- if(d.source.curatedPOC)
+ if(isMojoPOC(d))
   $("evidenceBasis").textContent="Geojit editorial voice: only editor-supplied facts are used. MarketsMojo remains a source reference, never the author of the draft. No article was fetched by SignalDesk. Demo only.";
  const note=$("contextNotice");
  note.hidden=!(d.variant==="insight"&&d.contextStatus==="needs_source");
@@ -602,7 +603,7 @@ async function generate(){
  if(!managerKey){$("aiSetupPanel").open=true;notify("Connect your manager key to generate two real AI versions. The OpenAI API key must be configured securely in Netlify.",true);$("managerKey").focus();return}
  generating=true;$("aiGenerate").disabled=true;$("aiGenerate").textContent="Generating…";
  try{
-  const result=await fetch("/.netlify/functions/draft",{method:"POST",headers:{"Content-Type":"application/json","x-manager-key":managerKey},body:JSON.stringify({title:d.source.title,snippet:d.source.snippet,publisher:d.source.publisher,publishedAt:d.source.publishedAt,sourceUrl:d.source.url,userPasted:!!d.manual||!!d.source.curatedPOC})});
+  const result=await fetch("/.netlify/functions/draft",{method:"POST",headers:{"Content-Type":"application/json","x-manager-key":managerKey},body:JSON.stringify({title:d.source.title,snippet:d.source.snippet,publisher:d.source.publisher,publishedAt:d.source.publishedAt,sourceUrl:d.source.url,userPasted:!!d.manual||isMojoPOC(d)})});
   const body=await result.json();
   if(!result.ok)throw Error(body.error||"AI drafting unavailable");
   if(typeof body.news!=="string"||!body.news.trim()||typeof body.insight!=="string")throw Error("Unexpected drafting response");
@@ -698,20 +699,23 @@ $("sourceVerified").addEventListener("change",e=>{
 });
 $("markReady").addEventListener("click",()=>{
  const d=current();if(!d||d.status==="Published")return;
- const text=buildText(d);
- if(d.source.demoOnly){notify("MarketsMojo POC drafts are for internal demonstration only. Publishing is disabled until rights are cleared.",true);return}
- if(!d.verified||!!(d.manual&&!validUrl(d.source.url))||!d.variants[d.variant]?.trim()||!text||text.length>280){notify("Verify the original, finish the draft, and ensure it fits the character limit.",true);return}
- d.status="Ready";d.updatedAt=new Date().toISOString();persist();updatePreview();
- notify("Draft is marked Ready in this browser. Check Geojit compliance requirements before copying or publishing.");
+ const text=buildText(d),blocker=reviewProblem(d,text);
+ if(blocker){notify(blocker,true);updatePreview();return}
+ const demo=isMojoPOC(d);
+ d.status=demo?"Ready for review":"Ready";
+ d.updatedAt=new Date().toISOString();persist();updatePreview();
+ notify(demo?
+  "Ready for internal management review. This POC is not cleared for external copying or publishing.":
+  "Draft is marked Ready in this browser. Check Geojit compliance requirements before copying or publishing.");
 });
 $("copyFinal").addEventListener("click",async()=>{
- const d=current();if(!d||d.source.demoOnly||!["Ready","Published"].includes(d.status))return;
+ const d=current();if(!d||isMojoPOC(d)||!["Ready","Published"].includes(d.status))return;
  const text=buildText(d);if(!text||text.length>280)return;
  try{await navigator.clipboard.writeText(text);notify("Final text copied. Publication on X is completely manual.")}
  catch(e){notify("Clipboard access was blocked by your browser. Select the preview and copy it manually.",true)}
 });
 $("recordPublished").addEventListener("click",()=>{
- const d=current();if(!d||d.source.demoOnly||d.status!=="Ready")return;
+ const d=current();if(!d||isMojoPOC(d)||d.status!=="Ready")return;
  const actual=sourceURLAccepted($("publishedUrl").value.trim());
  if(!actual){$("recordMessage").textContent="Enter a valid X post URL such as https://x.com/account/status/123456789";return}
  d.publishedText=buildText(d);d.xUrl=actual;d.status="Published";d.updatedAt=new Date().toISOString();
