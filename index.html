@@ -65,6 +65,8 @@
           <details id="composeCredentials" class="compose-credentials"><summary>AI connection <small id="composeConnectionState">(connect once per browser tab)</small></summary>
             <p>The OpenAI key stays in Netlify. Enter only your manager access key. If you type it here, Generate will connect automatically.</p>
             <div class="compose-credential-row"><input type="password" id="composeManagerKey" placeholder="Manager access key" autocomplete="off"><button type="button" id="composeConnect" class="outline">Connect</button></div>
+            <div class="compose-ai-tools"><button type="button" id="composeCheckEndpoint" class="outline">Check AI connection</button><a href="/.netlify/functions/ai-status" target="_blank" rel="noopener noreferrer">Open endpoint test ↗</a></div>
+            <p id="composeDiagnostic" class="compose-diagnostic" role="status" aria-live="polite">Each computer connects independently. No second OpenAI key is needed.</p>
           </details>
           <div class="compose-footer"><div><button type="button" id="composeGenerate" class="compose-action">✦ Generate tweet variants</button><button type="button" id="composeManual" class="outline">Continue without AI</button></div>
           <p id="composeStatus" class="compose-status" role="status" aria-live="polite">AI drafts are not fact-checked. Do not paste confidential or unlicensed content.</p></div>
