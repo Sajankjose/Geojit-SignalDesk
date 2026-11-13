@@ -77,12 +77,12 @@ test("Prompt requires actual Geojit brand voice and complete sentences",()=>{
  assert.match(prompt,/source-grounded|evidence-led/);
 });
 test("MarketsMojo POC tweet preview omits provider credit from the body while keeping source verification in Studio",()=>{
- assert.match(ui,/const from=d\.source\.curatedPOC\?"":/);
+ assert.match(ui,/const from=isMojoPOC\(d\)\?"":/);
  assert.match(ui,/studioSourceMeta/);
  assert.match(ui,/studioSourceLink/);
  assert.match(ui,/editorialVoiceV2/);
  assert.match(ui,/earlier draft used the news provider's voice/);
- assert.match(ui,/if\(d\.source\.demoOnly\)/);
+ assert.match(ui,/if\(!d\|\|isMojoPOC\(d\)\|\|d\.status!=="Ready"\)return/);
 });
 test("AI endpoint sanitizes publisher framing after a model response before sending it to browser",async()=>{
  const oldFetch=globalThis.fetch;

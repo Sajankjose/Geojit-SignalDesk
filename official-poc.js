@@ -451,6 +451,27 @@ function markEdited(d){
  d.status="Draft";d.verified=false;d.updatedAt=new Date().toISOString();
  persist();
 }
+// Older manually created drafts may have a MarketsMojo source URL but lack
+// the newer curatedPOC/demoOnly flags. Treat them as POC-only for safety.
+function isMojoPOC(d){
+ if(!d?.source)return false;
+ if(d.source.demoOnly||d.source.curatedPOC)return true;
+ const publisher=String(d.source.publisher||"").trim().toLowerCase().replace(/^www\./,"");
+ if(publisher==="marketsmojo"||publisher==="marketsmojo.com")return true;
+ try{
+  const host=new URL(d.source.url||"").hostname.toLowerCase();
+  return host==="marketsmojo.com"||host==="www.marketsmojo.com";
+ }catch{return false}
+}
+function reviewProblem(d,text){
+ if(!d)return "No draft selected.";
+ if(d.status==="Published")return "This post was already published.";
+ if(!d.verified)return "Confirm that you reviewed the original source and checked the facts.";
+ if(d.manual&&!validUrl(d.source.url))return "Add the original HTTPS source link before proceeding.";
+ if(!String(d.variants?.[d.variant]||"").trim())return "Finish the selected draft before marking it ready.";
+ if(text.length>280)return "The preview is "+text.length+" characters. Shorten it by "+(text.length-280)+" to fit the 280-character X limit.";
+ return "";
+}
 function buildText(d){
  if(!d)return"";
  if(d.status==="Published"&&d.publishedText)return d.publishedText;
@@ -458,7 +479,7 @@ function buildText(d){
  // For internal MarketsMojo concept drafts, attribution is kept in Studio's
  // source-reference panel rather than presented as the author of Geojit's text.
  // These drafts are disabled for external publishing until licensing is cleared.
- const from=d.source.curatedPOC?"":d.manual&&!validUrl(d.source.url)?"Source: User-provided text (not verified)":
+ const from=isMojoPOC(d)?"":d.manual&&!validUrl(d.source.url)?"Source: User-provided text (not verified)":
  "Source: "+d.source.publisher+(d.sourceLink&&validUrl(d.source.url)?" "+d.source.url:"");
  const uniqueTags=(Array.isArray(d.hashtags)?parseTags(d.hashtags.join(" ")):defaultTags(d.source))
   .filter(tag=>!body.toLowerCase().includes(tag.toLowerCase()));
@@ -466,18 +487,35 @@ function buildText(d){
 }
 function updatePreview(){
  const d=current();if(!d)return;
- const text=buildText(d),length=text.length;
+ const demo=isMojoPOC(d),text=buildText(d),length=text.length,blocker=reviewProblem(d,text);
  $("studioPreview").textContent=text||"Start writing your post";
  $("studioCount").textContent=length+" / 280 characters";
- $("publishDetails").open=d.status==="Ready"||d.status==="Published";
  $("studioCount").classList.toggle("over-limit",length>280);
+ // POC content may be internally reviewed but never sent to X from here.
+ $("publishDetails").hidden=demo;
+ $("publishDetails").open=!demo&&(d.status==="Ready"||d.status==="Published");
  $("draftStatus").textContent=d.status;
  $("sourceVerified").checked=!!d.verified;
- $("markReady").disabled=!!d.source.demoOnly||d.status==="Published"||!d.verified||!!(d.manual&&!validUrl(d.source.url))||!d.variants[d.variant]?.trim()||length>280;
- $("markReady").textContent=d.status==="Published"?"Already published":d.status==="Ready"?"Ready ✓":"Mark ready";
- $("copyFinal").disabled=!!d.source.demoOnly||!["Ready","Published"].includes(d.status)||length>280;
- $("recordPublished").disabled=!!d.source.demoOnly||d.status!=="Ready";
- $("publishedUrl").disabled=d.status==="Published";
+ $("reviewCheckLabel").textContent=demo?
+  "I reviewed the original and checked the draft facts for this internal POC":
+  "I checked the original and verified the final text";
+ $("markReady").disabled=!!blocker;
+ $("markReady").textContent=d.status==="Published"?"Already published":
+  demo?(d.status==="Ready for review"?"Review ready ✓":"Mark ready for review"):
+  d.status==="Ready"?"Ready ✓":"Mark ready";
+ $("reviewEligibility").textContent=blocker||(
+  demo?(d.status==="Ready for review"?
+   "Ready for internal management review. Copying and publishing remain disabled until content rights are approved.":
+   "Ready for internal review. This does not authorise publication or external copying.") :
+  d.status==="Ready"?"Ready for the manager's final publication checks.":"Source verified. You can mark this draft ready.");
+ $("reviewEligibility").classList.toggle("review-warning",!!blocker);
+ $("reviewPublishingNote").textContent=demo?
+  "Internal POC only — final publication, copying and X composer are unavailable. Keep original-source attribution in the Studio reference.":
+  "The manager publishes manually. Nothing is sent to X automatically.";
+ $("copyFinal").disabled=demo||!["Ready","Published"].includes(d.status)||length>280;
+ $("copyFinal").title=demo?"Copying POC content is disabled until reuse and publication permissions are confirmed.":"Copy the reviewed final post";
+ $("recordPublished").disabled=demo||d.status!=="Ready";
+ $("publishedUrl").disabled=demo||d.status==="Published";
  $("publishedUrl").value=d.xUrl||"";
  $("studioText").disabled=d.status==="Published";
  $("hashtagsInput").disabled=d.status==="Published";
@@ -496,7 +534,7 @@ function renderStudio(){
  // One-time safety migration for previously generated POC posts that made the
  // news provider the narrative subject. They must be regenerated, not silently
  // transformed into an asserted Geojit research opinion.
- if(d.source.curatedPOC&&!d.editorialVoiceV2){
+ if(isMojoPOC(d)&&d.status!=="Published"&&!d.editorialVoiceV2){
   const wronglyFramed=["news","insight"].some(v=>/\bmarketsmojo\b/i.test(String(d.variants?.[v]||"")));
   if(wronglyFramed){
    d.variants={news:"",insight:""};d.variant="news";
@@ -505,6 +543,7 @@ function renderStudio(){
    d.risks=[...new Set(["An earlier draft used the news provider's voice. It was cleared for regeneration.",...(d.risks||[])])].slice(0,9);
    d.status="Draft";d.verified=false;
   }
+  d.source.demoOnly=true;
   d.editorialVoiceV2=true;persist();
  }
  const sel=$("draftSelect");sel.replaceChildren();
@@ -514,7 +553,7 @@ function renderStudio(){
  }
  $("studioStoryTitle").textContent=d.source.title;
  $("studioSourceMeta").textContent=d.source.publisher+" · "+(d.source.curatedPOC?"Manually curated for POC":d.source.publishedAtEstimated?"Publication date not supplied":dateFmt(d.source.publishedAt,true,d.source.dateOnly))+" · "+d.source.category;
- $("studioDemoNotice").hidden=!d.source.demoOnly;
+ $("studioDemoNotice").hidden=!isMojoPOC(d);
  $("studioSourceLink").href=validUrl(d.source.url)||"#";
  $("studioSourceLink").hidden=!validUrl(d.source.url);
  $("manualSourceEdit").hidden=!d.manual;
@@ -533,7 +572,7 @@ function renderStudio(){
  (basis?"AI input: official RSS headline and excerpt, not the full release. Verify original.":"AI input: headline only, not the full release. More source detail may be needed.");
  if(d.source.provider==="PIB RSS")
   $("evidenceBasis").textContent="AI input: PIB press-release headline and short summary only. Verify the original and attribute Press Information Bureau.";
- if(d.source.curatedPOC)
+ if(isMojoPOC(d))
   $("evidenceBasis").textContent="Geojit editorial voice: only editor-supplied facts are used. MarketsMojo remains a source reference, never the author of the draft. No article was fetched by SignalDesk. Demo only.";
  const note=$("contextNotice");
  note.hidden=!(d.variant==="insight"&&d.contextStatus==="needs_source");
@@ -564,7 +603,7 @@ async function generate(){
  if(!managerKey){$("aiSetupPanel").open=true;notify("Connect your manager key to generate two real AI versions. The OpenAI API key must be configured securely in Netlify.",true);$("managerKey").focus();return}
  generating=true;$("aiGenerate").disabled=true;$("aiGenerate").textContent="Generating…";
  try{
-  const result=await fetch("/.netlify/functions/draft",{method:"POST",headers:{"Content-Type":"application/json","x-manager-key":managerKey},body:JSON.stringify({title:d.source.title,snippet:d.source.snippet,publisher:d.source.publisher,publishedAt:d.source.publishedAt,sourceUrl:d.source.url,userPasted:!!d.manual||!!d.source.curatedPOC})});
+  const result=await fetch("/.netlify/functions/draft",{method:"POST",headers:{"Content-Type":"application/json","x-manager-key":managerKey},body:JSON.stringify({title:d.source.title,snippet:d.source.snippet,publisher:d.source.publisher,publishedAt:d.source.publishedAt,sourceUrl:d.source.url,userPasted:!!d.manual||isMojoPOC(d)})});
   const body=await result.json();
   if(!result.ok)throw Error(body.error||"AI drafting unavailable");
   if(typeof body.news!=="string"||!body.news.trim()||typeof body.insight!=="string")throw Error("Unexpected drafting response");
@@ -660,20 +699,23 @@ $("sourceVerified").addEventListener("change",e=>{
 });
 $("markReady").addEventListener("click",()=>{
  const d=current();if(!d||d.status==="Published")return;
- const text=buildText(d);
- if(d.source.demoOnly){notify("MarketsMojo POC drafts are for internal demonstration only. Publishing is disabled until rights are cleared.",true);return}
- if(!d.verified||!!(d.manual&&!validUrl(d.source.url))||!d.variants[d.variant]?.trim()||!text||text.length>280){notify("Verify the original, finish the draft, and ensure it fits the character limit.",true);return}
- d.status="Ready";d.updatedAt=new Date().toISOString();persist();updatePreview();
- notify("Draft is marked Ready in this browser. Check Geojit compliance requirements before copying or publishing.");
+ const text=buildText(d),blocker=reviewProblem(d,text);
+ if(blocker){notify(blocker,true);updatePreview();return}
+ const demo=isMojoPOC(d);
+ d.status=demo?"Ready for review":"Ready";
+ d.updatedAt=new Date().toISOString();persist();updatePreview();
+ notify(demo?
+  "Ready for internal management review. This POC is not cleared for external copying or publishing.":
+  "Draft is marked Ready in this browser. Check Geojit compliance requirements before copying or publishing.");
 });
 $("copyFinal").addEventListener("click",async()=>{
- const d=current();if(!d||d.source.demoOnly||!["Ready","Published"].includes(d.status))return;
+ const d=current();if(!d||isMojoPOC(d)||!["Ready","Published"].includes(d.status))return;
  const text=buildText(d);if(!text||text.length>280)return;
  try{await navigator.clipboard.writeText(text);notify("Final text copied. Publication on X is completely manual.")}
  catch(e){notify("Clipboard access was blocked by your browser. Select the preview and copy it manually.",true)}
 });
 $("recordPublished").addEventListener("click",()=>{
- const d=current();if(!d||d.source.demoOnly||d.status!=="Ready")return;
+ const d=current();if(!d||isMojoPOC(d)||d.status!=="Ready")return;
  const actual=sourceURLAccepted($("publishedUrl").value.trim());
  if(!actual){$("recordMessage").textContent="Enter a valid X post URL such as https://x.com/account/status/123456789";return}
  d.publishedText=buildText(d);d.xUrl=actual;d.status="Published";d.updatedAt=new Date().toISOString();

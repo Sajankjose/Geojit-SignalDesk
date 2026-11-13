@@ -10,7 +10,7 @@ Demonstrate **Indian market story → Geojit AI tweet draft → human editorial 
 - Added stories are **browser-local** in `signaldesk:marketsmojo:curated:v1` and become cards in Discover (up to 35 curated entries). This data does not automatically sync between managers or devices.
 - Editors can add to Discover or **Add & draft with AI**, opening the existing source-backed News Update / Why It Matters Studio. The latter uses the already configured **Netlify OpenAI function**, not any MarketsMojo API.
 - Studio correctly indicates that a MarketsMojo headline and editor-written facts were the only AI input; the app neither fetched an article nor verified any market fact.
-- POC drafts remain editable and can be shown internally, but **Mark Ready, Copy Final and Record Published are disabled** for these stories pending appropriate publishing/content permissions. RBI/SEBI/PIB flows remain unchanged, with manual X publishing only.
+- POC drafts can be marked **Ready for review** after the manager checks the original and the preview fits the character limit. This is a browser-local **internal review status only**, NOT clearance for public publication. **Copy post, X composer and Record Published remain disabled** for these stories pending appropriate publishing/content permissions. RBI/SEBI/PIB flows remain unchanged.
 
 ## Why this boundary matters
 The existence of a publicly readable page does not automatically license extraction, redistribution or model processing. This POC makes the future integration visible without implying that MarketsMojo has authorised scraping or external publication. The user must paste only facts they can lawfully use, and verify them against the original and public filings before generating the draft. Avoid full article reproduction, market recommendations, and MarketsMojo proprietary ratings or conclusions.
@@ -21,7 +21,7 @@ The existence of a publicly readable page does not automatically license extract
 3. Click **Add news story**, enter the link and headline, and add short, independently verified facts.
 4. Click **Add & draft with AI**. If not yet connected, use Studio's existing AI connection with the manager key (the OpenAI API secret remains server-side).
 5. Compare the standalone, editable **News Update** and **Why It Matters** drafts. If evidence is insufficient, Why It Matters stays empty with an explanatory note. Discuss safeguards and workflow with the teams.
-6. Show that the POC draft cannot be marked Ready for public X posting. No automatic X publication exists anywhere in SignalDesk.
+6. After checking the original and ticking the verification checkbox, select **Mark ready for review** to demonstrate internal editorial progress. The button is enabled when text and source meet the visible eligibility checks; any missing requirement is explained beneath it. **No X copying or publishing is enabled.**
 
 ## Proposal for the MarketsMojo team
 Request approval for a limited, documented internal trial delivering headline, source URL, publication timestamp and a permitted short summary for 10–20 stories (perhaps via a simple RSS/JSON feed, not necessarily a commercial API). Confirm rights to view, store, transmit to an AI processor, create derivative editorial copy, and publish excerpts and source attribution. Only after written permission should an automatic server-side connector be considered.
@@ -31,3 +31,9 @@ The previous Marketaux tab, data function, session function and API-token integr
 
 ## Nonproduction boundaries
 No company SSO, Netlify visitor access protection, centralised shared storage or compliance audit log. Do not use POC browser records as production approval/publishing controls.
+
+## Review readiness change (November 2026)
+- For MarketsMojo POC stories, the status is now **Ready for review**, distinct from the regular **Ready** publication workflow for official sources.
+- The preview explains whether an action is blocked by missing source verification, missing original URL, empty content or the 280-character limit.
+- Older manually created drafts that reference `marketsmojo.com` are also treated as POC-only, even if they lack the newer `demoOnly` metadata. The provider stays in the source-reference panel; the tweet body is written in Geojit's factual voice.
+- Publication controls and the X composer are unavailable to POC drafts regardless of verification or review status.
