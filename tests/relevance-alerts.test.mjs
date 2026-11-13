@@ -34,7 +34,9 @@ test("Ranked feed controls and new-only bell coexist with source filter",()=>{
  assert.match(ui,/setInterval\(\(\)=>\{if\(!document\.hidden\|\|desktopAlertsActive\(\)\)refresh\(\)\}/);
  assert.match(ui,/firstVisit=known\.size===0/);
  assert.match(ui,/if\(!firstVisit/);
- assert.doesNotMatch(ui,/Notification\.requestPermission\(|serviceWorker\.register\(/);
+ assert.match(ui,/await window\.Notification\.requestPermission\(\)/);
+ assert.match(ui,/notifyNewHighPriority\(newImportant\)/);
+ assert.doesNotMatch(ui,/serviceWorker\.register\(/);
 });
 test("Editorial scores are server-produced and clearly estimated",()=>{
  assert.match(api,/rankOfficialStory\(base\)/);
