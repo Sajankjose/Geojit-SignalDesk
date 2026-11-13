@@ -78,10 +78,10 @@ export function prepareDraftResult(raw,evidence){
   risks.unshift("AI news text was incomplete, publisher-framed or not in Geojit's factual voice. A headline-based fallback was used; verify it.");
  }
  if(!news)throw Error("No complete, publisher-neutral factual sentence could be prepared. Supply a shorter verified headline.");
- if(!insight||needsReplacement(insight)){
+ if((normalize(raw.insight)&&(!insight||needsReplacement(insight)))||(!insight&&contextStatus==="supported")){
   insight="";
   contextStatus="needs_source";
-  contextNote="The supplied evidence does not support a complete, neutral explanation. Check the original and add specific verified context.";
+  contextNote="The supplied evidence does not support a complete, neutral explanation. Check the original source and add specific verified context.";
   risks.unshift("Why It Matters was withheld because it lacked a complete factual sentence or independent editorial voice.");
  }
  if(contextStatus==="needs_source"){
