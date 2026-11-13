@@ -61,12 +61,13 @@ test("MarketsMojo POC UI shows editor input and real source link, not a fake aut
 test("All new MarketsMojo drafts remain internal demos and AI receives user-provided facts",()=>{
  assert.match(js,/demoOnly:!!s\.demoOnly/);
  assert.match(js,/userPasted:!!d\.manual\|\|!!d\.source\.curatedPOC/);
- assert.match(js,/\$\("markReady"\)\.disabled=!!d\.source\.demoOnly/);
- assert.match(js,/\$\("copyFinal"\)\.disabled=!!d\.source\.demoOnly/);
- assert.match(js,/\$\("recordPublished"\)\.disabled=!!d\.source\.demoOnly/);
- assert.match(js,/if\(d\.source\.demoOnly\)\{notify\("MarketsMojo POC drafts/);
- assert.match(js,/if\(!d\|\|d\.source\.demoOnly\|\|!\["Ready","Published"\]/);
- assert.match(js,/if\(!d\|\|d\.source\.demoOnly\|\|d\.status!=="Ready"\)/);
+ // POC drafts can be marked ready for INTERNAL review, not for X publication.
+ assert.match(js,/d\.status=demo\?"Ready for review":"Ready"/);
+ assert.match(js,/\$\("markReady"\)\.disabled=!!blocker/);
+ assert.match(js,/\$\("copyFinal"\)\.disabled=demo\|\|/);
+ assert.match(js,/\$\("recordPublished"\)\.disabled=demo\|\|/);
+ assert.match(js,/if\(!d\|\|isMojoPOC\(d\)\|\|!\["Ready","Published"\]/);
+ assert.match(js,/if\(!d\|\|isMojoPOC\(d\)\|\|d\.status!=="Ready"\)/);
  assert.match(js,/No article was fetched by SignalDesk/);
  assert.doesNotMatch(js,/api\.x\.com\/2\/tweets|api\.twitter\.com\/2\/tweets/i);
 });
