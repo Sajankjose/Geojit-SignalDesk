@@ -451,6 +451,27 @@ function markEdited(d){
  d.status="Draft";d.verified=false;d.updatedAt=new Date().toISOString();
  persist();
 }
+// Older manually created drafts may have a MarketsMojo source URL but lack
+// the newer curatedPOC/demoOnly flags. Treat them as POC-only for safety.
+function isMojoPOC(d){
+ if(!d?.source)return false;
+ if(d.source.demoOnly||d.source.curatedPOC)return true;
+ const publisher=String(d.source.publisher||"").trim().toLowerCase().replace(/^www\./,"");
+ if(publisher==="marketsmojo"||publisher==="marketsmojo.com")return true;
+ try{
+  const host=new URL(d.source.url||"").hostname.toLowerCase();
+  return host==="marketsmojo.com"||host==="www.marketsmojo.com";
+ }catch{return false}
+}
+function reviewProblem(d,text){
+ if(!d)return "No draft selected.";
+ if(d.status==="Published")return "This post was already published.";
+ if(!d.verified)return "Confirm that you reviewed the original source and checked the facts.";
+ if(d.manual&&!validUrl(d.source.url))return "Add the original HTTPS source link before proceeding.";
+ if(!String(d.variants?.[d.variant]||"").trim())return "Finish the selected draft before marking it ready.";
+ if(text.length>280)return "The preview is "+text.length+" characters. Shorten it by "+(text.length-280)+" to fit the 280-character X limit.";
+ return "";
+}
 function buildText(d){
  if(!d)return"";
  if(d.status==="Published"&&d.publishedText)return d.publishedText;
@@ -458,7 +479,7 @@ function buildText(d){
  // For internal MarketsMojo concept drafts, attribution is kept in Studio's
  // source-reference panel rather than presented as the author of Geojit's text.
  // These drafts are disabled for external publishing until licensing is cleared.
- const from=d.source.curatedPOC?"":d.manual&&!validUrl(d.source.url)?"Source: User-provided text (not verified)":
+ const from=isMojoPOC(d)?"":d.manual&&!validUrl(d.source.url)?"Source: User-provided text (not verified)":
  "Source: "+d.source.publisher+(d.sourceLink&&validUrl(d.source.url)?" "+d.source.url:"");
  const uniqueTags=(Array.isArray(d.hashtags)?parseTags(d.hashtags.join(" ")):defaultTags(d.source))
   .filter(tag=>!body.toLowerCase().includes(tag.toLowerCase()));
@@ -466,18 +487,35 @@ function buildText(d){
 }
 function updatePreview(){
  const d=current();if(!d)return;
- const text=buildText(d),length=text.length;
+ const demo=isMojoPOC(d),text=buildText(d),length=text.length,blocker=reviewProblem(d,text);
  $("studioPreview").textContent=text||"Start writing your post";
  $("studioCount").textContent=length+" / 280 characters";
- $("publishDetails").open=d.status==="Ready"||d.status==="Published";
  $("studioCount").classList.toggle("over-limit",length>280);
+ // POC content may be internally reviewed but never sent to X from here.
+ $("publishDetails").hidden=demo;
+ $("publishDetails").open=!demo&&(d.status==="Ready"||d.status==="Published");
  $("draftStatus").textContent=d.status;
  $("sourceVerified").checked=!!d.verified;
- $("markReady").disabled=!!d.source.demoOnly||d.status==="Published"||!d.verified||!!(d.manual&&!validUrl(d.source.url))||!d.variants[d.variant]?.trim()||length>280;
- $("markReady").textContent=d.status==="Published"?"Already published":d.status==="Ready"?"Ready ✓":"Mark ready";
- $("copyFinal").disabled=!!d.source.demoOnly||!["Ready","Published"].includes(d.status)||length>280;
- $("recordPublished").disabled=!!d.source.demoOnly||d.status!=="Ready";
- $("publishedUrl").disabled=d.status==="Published";
+ $("reviewCheckLabel").textContent=demo?
+  "I reviewed the original and checked the draft facts for this internal POC":
+  "I checked the original and verified the final text";
+ $("markReady").disabled=!!blocker;
+ $("markReady").textContent=d.status==="Published"?"Already published":
+  demo?(d.status==="Ready for review"?"Review ready ✓":"Mark ready for review"):
+  d.status==="Ready"?"Ready ✓":"Mark ready";
+ $("reviewEligibility").textContent=blocker||(
+  demo?(d.status==="Ready for review"?
+   "Ready for internal management review. Copying and publishing remain disabled until content rights are approved.":
+   "Ready for internal review. This does not authorise publication or external copying.") :
+  d.status==="Ready"?"Ready for the manager's final publication checks.":"Source verified. You can mark this draft ready.");
+ $("reviewEligibility").classList.toggle("review-warning",!!blocker);
+ $("reviewPublishingNote").textContent=demo?
+  "Internal POC only — final publication, copying and X composer are unavailable. Keep original-source attribution in the Studio reference.":
+  "The manager publishes manually. Nothing is sent to X automatically.";
+ $("copyFinal").disabled=demo||!["Ready","Published"].includes(d.status)||length>280;
+ $("copyFinal").title=demo?"Copying POC content is disabled until reuse and publication permissions are confirmed.":"Copy the reviewed final post";
+ $("recordPublished").disabled=demo||d.status!=="Ready";
+ $("publishedUrl").disabled=demo||d.status==="Published";
  $("publishedUrl").value=d.xUrl||"";
  $("studioText").disabled=d.status==="Published";
  $("hashtagsInput").disabled=d.status==="Published";
