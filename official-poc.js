@@ -131,7 +131,7 @@ function showDesktopTestToast(message){
   desktopTestToastTimeout=setTimeout(()=>{toast.hidden=true},9000);
  }
 }
-let desktopTestToastTimeout=null;
+let desktopTestToastTimeout=null,desktopTestSerial=0;
 function testDesktopAlert(){
  if(!desktopAlertsActive()){
   renderDesktopAlertControls();
@@ -139,7 +139,7 @@ function testDesktopAlert(){
   return;
  }
  // A unique tag avoids Chrome silently replacing an earlier test notification.
- const tag="signaldesk-test-"+Date.now();
+ const tag="signaldesk-test-"+Date.now()+"-"+(++desktopTestSerial);
  const message="SignalDesk test confirmed in this page. Requesting a Chrome desktop notification…";
  showDesktopTestToast(message);
  const sent=showBrowserNotification("Geojit SignalDesk · Test alert",
