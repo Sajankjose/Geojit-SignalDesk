@@ -51,6 +51,7 @@ test("Unverified Geojit Research authorship and speculative effects are rejected
  assert.equal(unverifiedGeojitOpinion("Geojit Research expects investors to gain."),true);
  assert.equal(unverifiedGeojitOpinion("Our analysts believe stocks will rise."),true);
  assert.equal(sweepingImpact("This indicates a shift in investor sentiment."),true);
+ assert.equal(sweepingImpact("The divergence can indicate varying investor sentiment."),true);
  const result=prepareDraftResult({
   news:"Geojit Research expects large-cap stocks to outperform.",
   insight:"Our analysts believe investors should shift to defensive companies.",
