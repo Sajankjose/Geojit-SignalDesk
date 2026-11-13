@@ -198,10 +198,11 @@
                   <label class="field-label" for="disclosure">Approved disclosure</label>
                   <textarea id="disclosure" rows="2" placeholder="Add only Compliance-approved disclosure"></textarea>
                 </details>
-                <label class="confirm approval-check"><input type="checkbox" id="sourceVerified"> I checked the original and verified the final text</label>
+                <label class="confirm approval-check"><input type="checkbox" id="sourceVerified"> <span id="reviewCheckLabel">I checked the original and verified the final text</span></label>
                 <div class="review-actions"><button type="button" class="primary" id="markReady">Mark ready</button>
                   <button type="button" class="outline" id="copyFinal">Copy post</button></div>
-                <p class="small-muted">The manager publishes manually. Nothing is sent to X automatically.</p>
+                <p id="reviewEligibility" class="review-eligibility" role="status" aria-live="polite"></p>
+                <p id="reviewPublishingNote" class="small-muted">The manager publishes manually. Nothing is sent to X automatically.</p>
               </section>
               <details class="panel publishing-details" id="publishDetails">
                 <summary>After publishing on X</summary>
