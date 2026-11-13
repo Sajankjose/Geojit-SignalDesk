@@ -855,12 +855,19 @@ function renderPublished(){
 }
 async function generate(){
  const d=current();if(!d||generating||d.status==="Published")return;
- if(!managerKey){$("aiSetupPanel").open=true;notify("Connect your manager key to generate two real AI versions. The OpenAI API key must be configured securely in Netlify.",true);$("managerKey").focus();return}
+ if(!managerKey){$("aiSetupPanel").open=true;notify("AI not connected. Enter your manager key to generate AI versions.",true);$("managerKey").focus();return}
+ if(aiConnectionState!=="connected"){
+  const valid=await verifyAIConnection(managerKey);
+  if(!valid){$("aiSetupPanel").open=true;notify("AI connection issue: "+aiConnectionDetail+". Reconnect before generating.",true);return}
+ }
  generating=true;$("aiGenerate").disabled=true;$("aiGenerate").textContent="Generating…";
  try{
   const result=await fetch("/.netlify/functions/draft",{method:"POST",headers:{"Content-Type":"application/json","x-manager-key":managerKey},body:JSON.stringify({title:d.source.title,snippet:d.source.snippet,publisher:d.source.publisher,publishedAt:d.source.publishedAt,sourceUrl:d.source.url,userPasted:!!d.manual||isMojoPOC(d)})});
   const body=await result.json();
-  if(!result.ok)throw Error(body.error||"AI drafting unavailable");
+  if(!result.ok){
+   if(result.status===401){disconnectAI();setAIConnectionState("error","Netlify rejected the manager key. Connect again.");$("aiSetupPanel").open=true}
+   throw Error(body.error||"AI drafting unavailable");
+  }
   if(typeof body.news!=="string"||!body.news.trim()||typeof body.insight!=="string")throw Error("Unexpected drafting response");
   d.variants={news:body.news,insight:body.insight};d.variant="news";
   d.risks=Array.isArray(body.risks)?body.risks.slice(0,10).map(String):[];
@@ -980,24 +987,35 @@ $("recordPublished").addEventListener("click",()=>{
  persist();renderStudio();renderPublished();notify("Manual publication recorded in this browser. This is not a compliance archive.");
 });
 $("saveManagerKey").addEventListener("click",async()=>{
- const candidate=$("managerKey").value.trim();$("managerKey").value="";
- if(!candidate){managerKey="";try{sessionStorage.removeItem("signaldesk:manager:key")}catch{}notify("No key entered. You can still edit drafts manually.",true);return}
- $("saveManagerKey").disabled=true;$("saveManagerKey").textContent="Checking connection…";
- try{
-  const response=await fetch("/.netlify/functions/ai-status",{headers:{"x-manager-key":candidate},cache:"no-store"});
-  const body=await response.json();
-  if(!response.ok)throw Error(body.error||"AI connection unavailable");
-  if(!body.ready)throw Error(body.error||"The OpenAI service is not configured in Netlify yet");
-  managerKey=candidate;
-  try{sessionStorage.setItem("signaldesk:manager:key",managerKey)}catch{}
-  $("aiSetupPanel").open=false;
-  notify("AI is connected. Select Generate 2 AI versions for your selected story.");
- }catch(e){managerKey="";try{sessionStorage.removeItem("signaldesk:manager:key")}catch{}notify("AI connection: "+String(e.message||e)+". Manual drafting is still available.",true)}
- finally{$("saveManagerKey").disabled=false;$("saveManagerKey").textContent="Connect AI"}
+ const candidate=$("managerKey").value.trim();
+ if(!candidate&&!managerKey){
+  $("aiSetupPanel").open=true;
+  notify("AI not connected. Enter your manager access key first.",true);return;
+ }
+ $("saveManagerKey").disabled=true;$("saveManagerKey").textContent="Checking…";
+ const connected=await verifyAIConnection(candidate||managerKey);
+ if(connected){
+  $("managerKey").value="";
+  notify("AI connected and verified with Netlify. You can generate AI versions.");
+ }else{
+  $("aiSetupPanel").open=true;
+  notify("AI connection issue: "+(aiConnectionDetail||"Could not verify access.")+" Manual drafting remains available.",true);
+ }
+ $("saveManagerKey").disabled=false;renderAIConnectionState();
+});
+$("studioAIRecheck").addEventListener("click",async()=>{
+ if(!managerKey){setAIConnectionState("disconnected");return}
+ const ok=await verifyAIConnection(managerKey);
+ notify(ok?"AI connected and verified for this browser tab.":"AI check: "+aiConnectionDetail,!ok);
+});
+$("studioAIDisconnect").addEventListener("click",()=>{
+ disconnectAI();
+ notify("AI disconnected from this browser tab. Your drafts are unaffected.");
 });
 $("aiGenerate").addEventListener("click",generate);
 const initialView=location.hash.replace("#","");
 updateComposeConnection();
+if(managerKey)void verifyAIConnection(managerKey,{remember:false});
 renderDesktopAlertControls();
 updateNavCounts();navigate(initialView,false);refresh();
 setInterval(()=>{if(!document.hidden||desktopAlertsActive())refresh()},5*60*1000);
