@@ -31,13 +31,13 @@ export function normalizeNews(rows,now=Date.now()){
   const originalUrl=safeLink(item.link||item.url);
   const dateRaw=safeString(item.date||item.published_at||item.publishedAt,45);
   const time=Date.parse(dateRaw);
-  if(title.length<10||!originalUrl||!Number.isFinite(time)||time>now+3600000||time<now-14*86400000)continue;
+  if(title.length<10||!originalUrl||(Number.isFinite(time)&&(time>now+3600000||time<now-14*86400000)))continue;
   const key=originalUrl.toLowerCase();if(dedup.has(key))continue;dedup.add(key);
   const rawSource=typeof item.source==="object"?(item.source?.name||""):item.source;
   output.push({
    id:safeString(item.id,90)||"drishti-"+output.length,
    title,summary:safeString(item.summary,280),
-   originalUrl,publishedAt:new Date(time).toISOString(),
+   originalUrl,publishedAt:Number.isFinite(time)?new Date(time).toISOString():null,
    publisher:safeString(rawSource,100)||"Source not specified",
    company:safeString(item.company,100),symbol:safeString(item.symbol,30),
    sentiment:["positive","negative","neutral"].includes(item.sentiment)?item.sentiment:null,
