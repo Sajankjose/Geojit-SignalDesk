@@ -27,7 +27,7 @@
   - `/.netlify/functions/drishti-news?mode=news` (20 records maximum; costs 1 credit if the page has results)
 - Drishti API host: `https://developers.manasija.in`. Authentication via **server-only** `X-API-Key`.
 - Requests are generated from fixed paths; API key is **never** placed in query strings.
-- Headlines, short summaries, source labels, original HTTPS links and publication timestamps shown in a dedicated manager-only panel. Source dates are preserved; records without a known publication date are not presented as fresh items.
+- Headlines, short summaries, source labels, original HTTPS links and publication timestamps shown in a dedicated manager-only panel. Source dates are preserved; records without a known publication date are labelled **Publication time not supplied**, never presented as fresh.
 - Netlify in-memory cache for 15 minutes per warm function instance. This reduces duplicate billable calls but is **not a global quota guarantee** if Netlify starts multiple instances. Only click **Load news** when needed.
 - The existing RBI, SEBI, PIB and manually curated MarketsMojo sources remain unchanged.
 - Drishti records **are not** added to the public Discover list, automated news alerts, shared drafts, AI requests or publishing workflows. The app does not auto-poll this source or connect WebSockets.
