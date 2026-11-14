@@ -401,15 +401,9 @@ function removeMojo(id){
  mojoStories=mojoStories.filter(x=>x.id!==id);saveMojo();renderStories();renderHealth();updateMojoCount();
 }
 function visibleStories(){
- const rows=source==="MarketsMojo"?mojoStories:
-  source==="PIB"?pibStories:
-  source==="all"?[...payload.stories,...pibStories,...mojoStories]:
-  payload.stories.filter(x=>x.publisher===source);
- const seen=new Set();
- return rows.filter(x=>{
-  const key=String(x.url||"").toLowerCase().replace(/\/$/,"");
-  if(!key||seen.has(key))return false;seen.add(key);return true
- });
+ const rows=source==="MarketsMojo"?mojoStories:source==="PIB"?pibStories:source==="Drishti"?[]:
+  source==="all"?[...payload.stories,...pibStories,...drishtiStories,...mojoStories]:payload.stories.filter(s=>s.publisher===source);
+ return distinctStories(rows);
 }
 function showPIBPanel(){
  $("pibPanel").hidden=source!=="PIB";
@@ -441,7 +435,44 @@ async function loadPIB(){
 }
 // Drishti internal licensed feed evaluation. Do not mix this provider's
 // raw metadata into the PUBLIC Discover cards or the OpenAI draft endpoint.
-let drishtiReady=false,drishtiLoading=false,drishtiLastChecked=0;
+let drishtiReady=false,drishtiLoading=false,drishtiLastChecked=0,drishtiStories=[];
+function marketRelevance(s){
+ const content=[s.title,s.summary,s.company,s.symbol].filter(Boolean).join(" ").toLowerCase();
+ const test=x=>x.test(content);
+ const market=test(/\b(nifty|sensex|sebi|rbi|nse|bse|equity|stock|shares|ipo|market|mutual fund|bank|inflation|yield|rupee|earnings|results)\b/)?30:test(/\b(india|indian|domestic)\b/)?15:5;
+ const importance=test(/\b(rbi|sebi|policy|regulation|ipo|results|merger|acquisition|investment|crore|billion|rate cut)\b/)?25:test(/\b(partnership|launch|expansion|profit|loss|tariff)\b/)?15:7;
+ const age=Date.now()-Date.parse(s.publishedAt);
+ const fresh=Number.isFinite(age)&&age>=0?age<=6*3600000?20:age<=86400000?16:age<=3*86400000?11:age<=7*86400000?6:2:3;
+ const educational=test(/\b(explained|why|how|rules|policy|investor|tax|sip|inflation|risk|interest|economy)\b/)?15:test(/\b(sector|technology|manufacturing|infrastructure|trade)\b/)?9:5;
+ const fit=test(/\b(celebrity|sports|movie|entertainment|spam calls)\b/)?2:test(/\b(india|market|rbi|sebi|company|investment|earnings)\b/)?10:5;
+ const score=market+importance+fresh+educational+fit;
+ return {score,reason:"Rule-based editorial estimate: Indian-market relevance "+market+"/30; importance "+importance+"/25; freshness "+fresh+"/20; education "+educational+"/15; editorial fit "+fit+"/10. Not a prediction, recommendation or fact-check."};
+}
+function toDrishtiStory(s){
+ const r=marketRelevance(s);
+ return {id:"drishti:"+encodeURIComponent(s.originalUrl),url:s.originalUrl,title:s.title,
+ snippet:s.summary||"",publisher:s.publisher||"Original publisher",category:"Indian Markets",publishedAt:s.publishedAt,
+ provider:"Drishti",licensing:"internal_preview_only",demoOnly:true,priority:r.score,rankBasis:r.reason,reason:r.reason,suggestedHashtags:[]};
+}
+function distinctStories(rows){
+ const urls=new Set(),titles=new Set();
+ return rows.filter(s=>{
+  const u=String(s.url||"").toLowerCase().replace(/\/$/,"");
+  const key=String(s.title||"").toLowerCase().replace(/[^a-z0-9 ]/g," ").replace(/\b(a|an|the|of|and|in|on|for|to|with|from)\b/g," ").replace(/\s+/g," ").trim();
+  if(!u||urls.has(u)||(key&&titles.has(key)))return false;
+  urls.add(u);if(key)titles.add(key);return true;
+ });
+}
+function balancedPicks(rows,limit=10){
+ const counts=new Map(),out=[];
+ for(const s of rows){
+  const k=s.provider==="Drishti"?"Drishti":s.publisher;
+  if((counts.get(k)||0)>=3)continue;
+  out.push(s);counts.set(k,(counts.get(k)||0)+1);
+  if(out.length>=limit)break;
+ }
+ return out;
+}
 function drishtiMessage(text,isError=false){
  const node=$("drishtiStatus");node.textContent=text;
  node.dataset.error=isError?"true":"false";
@@ -520,12 +551,18 @@ function renderDrishtiTrial(rows){
  if(!rows.length){list.append(el("p","muted","No dated Drishti headlines were returned in the preview window. Try again later or check News coverage in the Drishti console."));return}
  for(const story of rows){
   const card=el("article","drishti-story");
+  const scored=marketRelevance(story);
+  const score=el("span","score-label "+(scored.score>=75?"score-high":scored.score>=50?"score-mid":"score-low"),"Relevance · "+scored.score+"/100");
+  score.title=scored.reason;
+  const details=el("details","relevance-details");
+  details.append(el("summary","","Why this score?"),el("p","",scored.reason));
   const top=el("div","drishti-story-meta");
   top.append(el("span","",story.publisher||"Original publisher not supplied"));
   const dt=Date.parse(story.publishedAt);
   if(Number.isFinite(dt))top.append(el("span","",new Date(dt).toLocaleString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})));
   else top.append(el("span","","Publication time not supplied"));
   if(story.symbol)top.append(el("span","",story.symbol));
+  top.append(score);
   const title=el("strong","",story.title);
   const summary=el("p","",story.summary||"Open the original source to verify the details.");
   const link=el("a","drishti-original","View original source ↗");
@@ -535,7 +572,7 @@ function renderDrishtiTrial(rows){
   create.type="button";
   create.addEventListener("click",()=>startDrishtiDraft(story));
   actions.append(create,link);
-  card.append(top,title,summary,actions);list.append(card);
+  card.append(top,title,summary,details,actions);list.append(card);
  }
 }
 async function loadDrishtiTrial(){
@@ -546,6 +583,8 @@ async function loadDrishtiTrial(){
   const data=await drishtiRequest("news");
   if(!Array.isArray(data.articles))throw Error("Drishti news response was not recognised.");
   renderDrishtiTrial(data.articles);
+  drishtiStories=data.articles.map(toDrishtiStory);
+  renderStories();renderHealth();
   drishtiLastChecked=Date.now();
   drishtiMessage("Loaded "+data.articles.length+" dated headlines. "+
    (data.cached?"Recent server cache used; no new provider call.":"Provider queried; a successful non-empty page uses one credit.")+
@@ -563,8 +602,8 @@ function switchSource(next){
  if(source==="PIB")loadPIB();
 }
 function renderHealth(){
- $("total").textContent=payload.stories.length+mojoStories.length+pibStories.length;
- $("todayCount").textContent=payload.stories.filter(s=>{const t=new Date(s.publishedAt).getTime();return t<=Date.now()&&Date.now()-t<=86400000}).length;
+ $("total").textContent=payload.stories.length+mojoStories.length+pibStories.length+drishtiStories.length;
+ $("todayCount").textContent=[...payload.stories,...pibStories,...drishtiStories].filter(s=>{const t=new Date(s.publishedAt).getTime();return t<=Date.now()&&Date.now()-t<=86400000}).length;
  $("health").textContent=payload.sources.filter(s=>s.ok).length+" / 4";
  const box=$("sources");box.replaceChildren();
  if(!payload.sources.length){box.append(el("p","muted","No source response yet"));return}
@@ -575,11 +614,16 @@ function renderHealth(){
 }
 function renderStories(){
  const list=$("news");list.replaceChildren();const now=Date.now();
- const shown=visibleStories().filter(s=>
+ let shown=visibleStories().filter(s=>
   (now-new Date(s.publishedAt).getTime()<=windowDays*86400000)&&
   (rankMode!=="high"||important(s))&&(rankMode!=="unread"||feedState.unread.includes(s.id))&&
   (s.title+" "+s.snippet+" "+s.category).toLowerCase().includes(search));
  shown.sort((a,b)=>rankMode==="latest"?Date.parse(b.publishedAt)-Date.parse(a.publishedAt):priorityOf(b)-priorityOf(a)||Date.parse(b.publishedAt)-Date.parse(a.publishedAt));
+ if(rankMode==="picks")shown=balancedPicks(shown,10);
+ $("allTrialNote").hidden=source!=="all";
+ if(source==="all")$("allTrialNote").textContent=drishtiStories.length?
+ "Indian Markets: "+drishtiStories.length+" Drishti headlines included in this manager-only view. Top Picks balances sources.":
+ "Indian Markets news will appear here after loading Drishti in its tab (provider credits may apply).";
  if(!shown.length){
   const msg=source==="PIB"?(pibStories.length?"No PIB economy/policy releases match these filters. Try 30 days or Latest.":"No PIB economy/policy stories loaded yet. See the status above and the official PIB website."):
  source==="Drishti"?"Drishti headlines are shown above. Select Create Tweet to prepare an internal draft; AI and publishing remain restricted during the trial.":
@@ -592,6 +636,7 @@ function renderStories(){
   const existing=workspace.drafts[s.id];
   append(top,el("span","pill",s.publisher),el("span","pill secondary",s.category||"Official update"));
   if(s.curatedPOC)top.append(el("span","pill mojo-label","Curated · Internal POC"));
+  if(s.provider==="Drishti")top.append(el("span","pill mojo-label","Drishti · Internal trial"));
   if(s.provider==="PIB RSS")top.append(el("span","pill secondary","Government source · PIB"));
   const score=s.curatedPOC?el("span","score-label score-low","Manual selection"):
    el("span","score-label "+(important(s)?"score-high":priorityOf(s)>=60?"score-mid":"score-low"),
@@ -606,7 +651,7 @@ function renderStories(){
   const rationale=el("p","why-relevant",s.reason||"Relevance is a provisional editorial estimate; verify the primary source.");
   const actions=el("div","story-buttons"),link=el("a","outline","Source ↗"),btn=el("button","outline dark",existing?"Continue draft →":"Create post →");
   link.href=validUrl(s.url)||"#";link.target="_blank";link.rel="noopener noreferrer";
-  btn.type="button";btn.addEventListener("click",()=>startDraft(s));
+  btn.type="button";btn.addEventListener("click",()=>s.provider==="Drishti"?startDrishtiDraft({title:s.title,summary:s.snippet,originalUrl:s.url,publisher:s.publisher,publishedAt:s.publishedAt}):startDraft(s));
   link.addEventListener("click",()=>readStory(s.id));
   if(s.curatedPOC){
    const remove=el("button","mojo-remove","Remove from POC");
