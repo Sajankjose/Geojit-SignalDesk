@@ -24,14 +24,15 @@
       <div class="top-actions"><span class="today-date" id="clock"></span>
         <div class="alert-anchor"><button type="button" id="alertsButton" class="alerts-button" aria-label="Important news alerts" aria-expanded="false" aria-controls="alertsPanel"><span aria-hidden="true">🔔</span><span class="alert-badge" id="alertCount" hidden>0</span></button>
         <section class="alerts-panel" id="alertsPanel" aria-label="Important news alerts" hidden><div class="alerts-heading"><strong>Important updates</strong><button type="button" id="alertsClose" aria-label="Close alerts">×</button></div>
-          <p class="alerts-hint">New high-priority RBI/SEBI releases since your last check. In-app alerts work while SignalDesk is open.</p>
+          <p class="alerts-hint">New RBI/SEBI alerts and recent important updates. Alerts are checked while SignalDesk is open.</p>
+          <div class="alert-check-row"><span id="alertFeedStatus" role="status">Checking official news feeds…</span><button type="button" id="alertCheckNow" class="outline">Check now</button></div>
           <div class="desktop-alert-settings">
             <div class="desktop-alert-info"><strong>Desktop notifications</strong><p id="desktopAlertStatus" role="status" aria-live="polite">Checking browser support…</p></div>
-            <div class="desktop-alert-controls"><button type="button" id="desktopAlertToggle" class="outline">Enable alerts</button><button type="button" id="desktopAlertTest" class="outline" hidden>Test</button></div>
-            <small>Opt-in · New high-priority RBI/SEBI news only · Every ~5 minutes while this browser page stays open. No alerts after the page is closed.</small>
+            <div class="desktop-alert-controls"><button type="button" id="desktopAlertToggle" class="outline">Enable alerts</button><button type="button" id="desktopAlertTest" class="outline">Test notification</button></div>
+            <small>Opt-in · New high-priority RBI/SEBI news only · Checks approximately every 5 minutes while this tab is running (browser background throttling may delay checks). Closing SignalDesk stops alerts. Indian Markets/Drishti is not monitored automatically.</small>
             <details class="desktop-alert-help"><summary>Not seeing a desktop popup?</summary><p>Chrome permission alone does not guarantee a visible Windows banner.</p><p>In Windows, open <strong>Settings → System → Notifications</strong>. Turn notifications and <strong>Google Chrome</strong> banners on, then switch <strong>Do not disturb</strong> off.</p><p>In Chrome, select the site-controls icon beside the website address and allow notifications. You can also check the Windows Notification Centre for alerts that did not appear as banners.</p></details>
           </div>
-          <div id="alertsList" class="alerts-list"></div><button type="button" id="clearAlerts" class="alerts-clear">Mark all seen</button></section></div>
+          <div id="alertsList" class="alerts-list"></div><button type="button" id="clearAlerts" class="alerts-clear">Mark new alerts seen</button></section></div>
       </div></header>
     <div class="content">
       <section id="discoverView" class="view-screen">
