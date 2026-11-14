@@ -1,0 +1,387 @@
+{
+  "version": "1.0.0",
+  "frameworkName": "Geojit SignalDesk Six-Category Editorial Framework",
+  "status": "proposed_not_live",
+  "editorialPromise": "Make financial developments easier to understand.",
+  "owner": "Geojit Marketing / Editorial",
+  "approvalRequired": [
+    "Research as relevant",
+    "Marcom",
+    "Compliance"
+  ],
+  "liveImplementation": false,
+  "doNotChangeStudioUI": true,
+  "globalWritingRules": [
+    "Use Geojit's calm, factual and accessible editorial voice, not a source publisher's narration.",
+    "Maintain publisher and original URL in internal source metadata and follow required attribution; do not disguise source-derived opinion as Geojit Research.",
+    "Never invent numbers, dates, quotes, causes, market sentiment, research recommendations, forecasts or factual verification.",
+    "Treat every source snippet/headline as unverified until checked; AI does not independently fetch/read an article.",
+    "No hype, fear, urgency, FOMO, return guarantees, personalised recommendations, or unsupported 'investors should' claims.",
+    "Do not conflate observation, correlation, causation and mechanical rule implications.",
+    "When material evidence is missing, withhold unsupported angles and ask for specific facts.",
+    "Never write incomplete sentences or clip words. Observe format-specific character budgets with disclosure and link overhead.",
+    "Human fact-checking, compliance signoff and manual final publication remain mandatory.",
+    "POC-only MarketsMojo entries cannot be externally copied or published until rights are confirmed."
+  ],
+  "sourceQualityLevels": [
+    {
+      "level": "A",
+      "name": "Primary verified",
+      "use": "Verified fact, properly supported context, approved visuals and sequenced explanations"
+    },
+    {
+      "level": "B",
+      "name": "Checked secondary context",
+      "use": "Constrained factual post with editor-verified corroboration; no speculative causal claims"
+    },
+    {
+      "level": "C",
+      "name": "Headline/snippet only",
+      "use": "Internal draft only, withhold deeper implications"
+    },
+    {
+      "level": "D",
+      "name": "Ambiguous/incomplete/unlicensed",
+      "use": "Ask for evidence or permissions; no publishable output"
+    }
+  ],
+  "reviewGates": [
+    "claim provenance",
+    "publication rights",
+    "fact, unit and date precision",
+    "Geojit voice",
+    "readability",
+    "approved disclosures",
+    "manual review"
+  ],
+  "modes": [
+    {
+      "id": "news_update",
+      "name": "News Update",
+      "purpose": "Short standalone factual development"
+    },
+    {
+      "id": "simply_explained",
+      "name": "Simply Explained",
+      "purpose": "Plain-English learning about a term/mechanism"
+    },
+    {
+      "id": "why_it_matters",
+      "name": "Why It Matters",
+      "purpose": "Only relevance explicitly supported by supplied evidence"
+    },
+    {
+      "id": "data_context",
+      "name": "Data & Context",
+      "purpose": "Verified metric and correctly defined comparator"
+    },
+    {
+      "id": "thread_builder",
+      "name": "Thread Builder",
+      "purpose": "Three to five logically sequenced posts for a documented mechanism or comparison"
+    },
+    {
+      "id": "wealth_habits",
+      "name": "Money & Wealth Habits",
+      "purpose": "Transparent, nonprescriptive household-finance learning"
+    }
+  ],
+  "categories": [
+    {
+      "id": "market_regulatory",
+      "code": "C1",
+      "name": "Market & Regulatory Updates",
+      "readerPromise": "Know what changed, when it applies and to whom.",
+      "readerQuestion": "What changed and what should a participant understand?",
+      "routingSignals": [
+        "regulator circular",
+        "exchange rule",
+        "trading session change",
+        "investor protection notice",
+        "policy implementation"
+      ],
+      "requiredEvidence": [
+        "primary document or regulator/exchange notice",
+        "change or action and affected population",
+        "final/proposed status",
+        "effective date if mentioned"
+      ],
+      "openingRule": "Name the responsible institution and the specific action; state date and scope when verified.",
+      "writingSteps": [
+        "actor + factual action",
+        "exact change/date/scope",
+        "one supported practical clarification"
+      ],
+      "allowedModes": [
+        "news_update",
+        "simply_explained",
+        "why_it_matters",
+        "thread_builder"
+      ],
+      "forbiddenClaims": [
+        "assume an effective date",
+        "misstate proposal as final",
+        "guess market price effect",
+        "generalise narrow scope to all investors"
+      ],
+      "withholdWhen": [
+        "primary action or rule status is unverified",
+        "scope or effective date is ambiguous and material"
+      ],
+      "exampleAngle": "How did the rule change, and who is covered?"
+    },
+    {
+      "id": "market_intelligence",
+      "code": "C2",
+      "name": "Market Intelligence & Context",
+      "readerPromise": "Read a market observation without being instructed what to trade.",
+      "readerQuestion": "What does verified market data show?",
+      "routingSignals": [
+        "index performance",
+        "sector performance",
+        "macro indicator",
+        "market breadth",
+        "historical comparison",
+        "liquidity",
+        "rates"
+      ],
+      "requiredEvidence": [
+        "authorised data source",
+        "exact value and unit",
+        "measurement date/time or period",
+        "benchmark or comparator definition",
+        "comparison methodology if historical"
+      ],
+      "openingRule": "Lead with the observed metric, market and time window; separate observation from interpretation.",
+      "writingSteps": [
+        "observed metric and period",
+        "comparison or context",
+        "limited documented interpretation or no interpretation"
+      ],
+      "allowedModes": [
+        "news_update",
+        "data_context",
+        "why_it_matters",
+        "thread_builder"
+      ],
+      "forbiddenClaims": [
+        "assume market sentiment from prices",
+        "forecast rebound or performance",
+        "invent causes of price changes",
+        "cherry-pick historical results",
+        "call correction healthy without source"
+      ],
+      "withholdWhen": [
+        "date, unit, denominator or data source missing",
+        "only secondary analyst opinion with no underlying figures"
+      ],
+      "exampleAngle": "What does the dated index and sector comparison actually show?"
+    },
+    {
+      "id": "company_earnings",
+      "code": "C3",
+      "name": "Company & Earnings",
+      "readerPromise": "Understand a company disclosure and its important reported numbers.",
+      "readerQuestion": "What did the company officially disclose?",
+      "routingSignals": [
+        "quarterly results",
+        "corporate filing",
+        "order announcement",
+        "IPO filing",
+        "dividend",
+        "management change",
+        "corporate action"
+      ],
+      "requiredEvidence": [
+        "official company or exchange filing",
+        "reporting period or event date",
+        "units and financial definitions",
+        "YoY/QoQ basis if compared",
+        "consolidated or standalone basis if material"
+      ],
+      "openingRule": "Start with company name, disclosed event and period; lead with no more than three material verified metrics.",
+      "writingSteps": [
+        "company and event",
+        "two or three exact figures",
+        "material reporting caveat or next disclosed milestone"
+      ],
+      "allowedModes": [
+        "news_update",
+        "data_context",
+        "thread_builder"
+      ],
+      "forbiddenClaims": [
+        "buy/sell/hold",
+        "stock targets or valuation recommendations",
+        "asserted price impact",
+        "confuse YoY and QoQ",
+        "equate order win with revenue",
+        "misstate IPO filing as listing"
+      ],
+      "withholdWhen": [
+        "no primary company disclosure for material claims",
+        "units, period, comparison basis or corporate status unresolved"
+      ],
+      "exampleAngle": "Which numbers in the filing are meaningful and correctly comparable?"
+    },
+    {
+      "id": "financial_education",
+      "code": "C4",
+      "name": "Financial Education",
+      "readerPromise": "Understand one financial term or concept without feeling excluded.",
+      "readerQuestion": "What does this term mean and how does it work?",
+      "routingSignals": [
+        "mutual fund terminology",
+        "demat basics",
+        "SIP mechanics",
+        "investment glossary",
+        "financial concepts",
+        "risk definitions"
+      ],
+      "requiredEvidence": [
+        "approved Geojit/regulator education source",
+        "accurate definition",
+        "relevant exception, risk or cost",
+        "analogy validated for accuracy"
+      ],
+      "openingRule": "Start with a recognisable question or term, answer it plainly, and use one faithful illustration.",
+      "writingSteps": [
+        "the confusing term/question",
+        "simple definition",
+        "one everyday example",
+        "necessary limitation"
+      ],
+      "allowedModes": [
+        "simply_explained",
+        "thread_builder",
+        "news_update"
+      ],
+      "forbiddenClaims": [
+        "personalised suitability advice",
+        "safe or guaranteed returns",
+        "incorrect tax treatment",
+        "omit material investment risks",
+        "misleading analogies"
+      ],
+      "withholdWhen": [
+        "no approved definition",
+        "an analogy would mislead about risk, cost or regulation"
+      ],
+      "exampleAngle": "What does each part of a mutual-fund scheme name actually mean?"
+    },
+    {
+      "id": "wealth_habits",
+      "code": "C5",
+      "name": "Money & Wealth Habits",
+      "readerPromise": "Relate a money principle to an ordinary decision.",
+      "readerQuestion": "What can this realistic example help a reader understand?",
+      "routingSignals": [
+        "saving routine",
+        "cash flow",
+        "budgeting",
+        "emergency reserves",
+        "long-term discipline",
+        "compounding",
+        "goal planning"
+      ],
+      "requiredEvidence": [
+        "approved financial education principle",
+        "comparable contributions or clearly disclosed differences",
+        "duration and frequency",
+        "return, inflation, fees assumptions if used"
+      ],
+      "openingRule": "Open with a relatable decision and state amounts and assumptions before drawing a lesson.",
+      "writingSteps": [
+        "everyday choice",
+        "show contribution totals and assumptions",
+        "explain trade-off without prescription"
+      ],
+      "allowedModes": [
+        "wealth_habits",
+        "data_context",
+        "simply_explained",
+        "thread_builder"
+      ],
+      "forbiddenClaims": [
+        "compare unequal amounts as equal",
+        "promise compounding results",
+        "shame household spending",
+        "give universal allocation rules",
+        "assume SIP beats inflation"
+      ],
+      "withholdWhen": [
+        "amounts or time horizons not stated",
+        "comparison is misleading without assumptions"
+      ],
+      "exampleAngle": "How do monthly and annual contribution totals differ before returns are considered?"
+    },
+    {
+      "id": "deep_explainers",
+      "code": "C6",
+      "name": "Explainers & Deep Dives",
+      "readerPromise": "Understand the actual steps behind a complicated financial mechanism.",
+      "readerQuestion": "How does this system or process work, and why?",
+      "routingSignals": [
+        "auction mechanism",
+        "opening price process",
+        "closing price process",
+        "IPO process",
+        "bond yield mechanics",
+        "settlement workflow",
+        "multi-step rule mechanics"
+      ],
+      "requiredEvidence": [
+        "primary procedural rulebook or approved technical reference",
+        "ordered steps",
+        "conditions and exceptions",
+        "process outcome supported by source"
+      ],
+      "openingRule": "Ask a precise how/why question that the source answers and name the mechanism in the first step.",
+      "writingSteps": [
+        "specific mechanism question",
+        "three to five ordered factual steps",
+        "one supported analogy or visual",
+        "condition or exception"
+      ],
+      "allowedModes": [
+        "thread_builder",
+        "simply_explained",
+        "data_context"
+      ],
+      "forbiddenClaims": [
+        "invent event causality",
+        "turn incomplete steps into certainty",
+        "suppress exceptions",
+        "misleading sensational hooks",
+        "make process sound like a trading recommendation"
+      ],
+      "withholdWhen": [
+        "mechanism not substantiated by a primary source",
+        "a critical step/exception is unknown"
+      ],
+      "exampleAngle": "How is the opening auction price calculated, step by step?"
+    }
+  ],
+  "routingRule": "Choose one primary category by dominant reader promise, not keywords alone. Optional secondary tag. Editor can override with a reason.",
+  "outputPolicy": {
+    "default": "one strong primary format and at most one optional alternative",
+    "whenEvidenceInsufficient": "needs_source",
+    "maxHashtags": 2,
+    "noAutomaticPosting": true,
+    "currentAppLimitNote": "Current AI endpoint targets 165 characters per draft body. Proposed format-specific lengths are not implemented.",
+    "proposedDraftFields": [
+      "primaryCategory",
+      "secondaryCategory",
+      "classificationReason",
+      "evidenceLevel",
+      "rightsStatus",
+      "format",
+      "drafts",
+      "claimChecks",
+      "withheldClaims",
+      "missingEvidence",
+      "editorNotes",
+      "requiresHumanApproval"
+    ]
+  }
+}
