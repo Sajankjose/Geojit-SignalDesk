@@ -936,6 +936,7 @@ function reviewProblem(d,text){
  if(!d.verified)return "Confirm that you reviewed the original source and checked the facts.";
  if(d.manual&&!validUrl(d.source.url))return "Add the original HTTPS source link before proceeding.";
  if(d.format==="thread"){
+  if(d.threadNeedsEvidence)return "The source does not support a complete connected thread. Add independently verified detail and regenerate, or switch to Single Post.";
   const posts=threadParts(d),texts=threadTexts(d);
   if(posts.length<2||posts.length>3||posts.some(p=>!String(p).trim()))return "Complete all thread posts before marking Ready.";
   if(texts.some(t=>t.length>280))return "One or more thread posts exceed 280 characters including numbering, disclosure and attribution.";
@@ -1104,9 +1105,9 @@ async function generate(){
   }
   if(isThread){
     if(!Array.isArray(body.posts)||body.posts.length<2)throw Error("Unexpected thread response");
-    d.threadPosts=body.posts.slice(0,3);d.threadEvidenceNote=body.needsEvidence?"More evidence needed: "+body.evidenceNote:"AI sequence is a draft. Verify every separate claim against its original source.";
+    d.threadPosts=body.posts.slice(0,3);d.threadNeedsEvidence=body.needsEvidence===true;d.threadEvidenceNote=body.needsEvidence?"More evidence needed: "+body.evidenceNote+" Switch to Single Post if source information is insufficient.":"AI sequence is a draft. Verify every separate claim against its original source.";
     d.risks=Array.isArray(body.risks)?body.risks.slice(0,10):[];
-    markEdited(d);notify("Connected thread generated. Edit each post, verify facts and approve before copying.");renderStudio();return;
+    markEdited(d);notify(d.threadNeedsEvidence?"Thread needs more independent source evidence; it cannot be marked Ready yet. Consider Single Post.":"Connected thread generated. Edit each post, verify facts and approve before copying.",d.threadNeedsEvidence);renderStudio();return;
    }
    if(typeof body.news!=="string"||!body.news.trim()||typeof body.insight!=="string")throw Error("Unexpected drafting response");
   d.variants={news:body.news,insight:body.insight};d.variant="news";
