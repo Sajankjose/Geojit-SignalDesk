@@ -2,6 +2,10 @@
 .drishti-create{background:#08796d;color:#fff;border:1px solid #08796d;border-radius:8px;padding:9px 13px;font-size:12px;font-weight:800}
 .drishti-create:hover{background:#005a51}
 .drishti-story-actions .drishti-original{margin:0}
+.relevance-details{font-size:11px;color:var(--muted);margin-top:10px}
+.relevance-details summary{cursor:pointer;font-weight:750;color:var(--green)}
+.relevance-details p{line-height:1.6;margin:5px 0}
+.all-trial-note{background:#f3f8f5;padding:9px 13px;border:1px solid #dfeae3;border-radius:8px;color:#526a61;font-size:11px;margin:10px 0}
 :root{--green:#09877b;--deep:#004c44;--ink:#14332d;--muted:#6c837c;--line:#e4ebe8;--paper:#f8faf9;--white:#fff;--orange:#ff7e4d;--mint:#eaf6f0}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
