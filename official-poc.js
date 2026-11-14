@@ -941,7 +941,7 @@ function reviewProblem(d,text){
   if(texts.some(t=>t.length>280))return "One or more thread posts exceed 280 characters including numbering, disclosure and attribution.";
   if(new Set(posts.map(p=>p.trim().toLowerCase())).size!==posts.length)return "Thread posts must contain distinct information.";
  }else if(!String(d.variants?.[d.variant]||"").trim())return "Finish the selected draft before marking it ready.";
- if(text.length>280)return "The preview is "+text.length+" characters. Shorten it by "+(text.length-280)+" to fit the 280-character X limit.";
+ if(d.format!=="thread"&&text.length>280)return "The preview is "+text.length+" characters. Shorten it by "+(text.length-280)+" to fit the 280-character X limit.";
  return "";
 }
 function buildText(d){
@@ -962,8 +962,8 @@ function updatePreview(){
  const demo=isMojoPOC(d),isThread=d.format==="thread",text=isThread?threadTexts(d).join("\n\n"):buildText(d),length=text.length,blocker=reviewProblem(d,text);
  $("studioPreview").textContent=text||"Start writing your post";
  renderThreadPreview(d);
- $("studioCount").textContent=length+" / 280 characters";
- $("studioCount").classList.toggle("over-limit",length>280);
+ $("studioCount").textContent=isThread?threadTexts(d).length+" connected posts (280 characters each)":length+" / 280 characters";
+ $("studioCount").classList.toggle("over-limit",isThread?threadTexts(d).some(t=>t.length>280):length>280);
  // POC content may be internally reviewed but never sent to X from here.
  $("publishDetails").hidden=demo;
  $("publishDetails").open=!demo&&(d.status==="Ready"||d.status==="Published");
@@ -1207,7 +1207,7 @@ $("sourceVerified").addEventListener("change",e=>{
 });
 $("markReady").addEventListener("click",()=>{
  const d=current();if(!d||d.status==="Published")return;
- const text=buildText(d),blocker=reviewProblem(d,text);
+ const text=d.format==="thread"?threadTexts(d).join("\n\n"):buildText(d),blocker=reviewProblem(d,text);
  if(blocker){notify(blocker,true);updatePreview();return}
  const demo=isMojoPOC(d);
  d.status=demo?"Ready for review":"Ready";
@@ -1218,7 +1218,7 @@ $("markReady").addEventListener("click",()=>{
 });
 $("copyFinal").addEventListener("click",async()=>{
  const d=current();if(!d||isMojoPOC(d)||!["Ready","Published"].includes(d.status))return;
- const text=buildText(d);if(!text||text.length>280)return;
+ const text=buildText(d);if(d.format==="thread"||!text||text.length>280)return;
  try{await navigator.clipboard.writeText(text);notify("Final text copied. Publication on X is completely manual.")}
  catch(e){notify("Clipboard access was blocked by your browser. Select the preview and copy it manually.",true)}
 });
