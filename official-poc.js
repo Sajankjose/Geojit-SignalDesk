@@ -504,6 +504,7 @@ function renderDrishtiTrial(rows){
   top.append(el("span","",story.publisher||"Original publisher not supplied"));
   const dt=Date.parse(story.publishedAt);
   if(Number.isFinite(dt))top.append(el("span","",new Date(dt).toLocaleString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})));
+  else top.append(el("span","","Publication time not supplied"));
   if(story.symbol)top.append(el("span","",story.symbol));
   const title=el("strong","",story.title);
   const summary=el("p","",story.summary||"Open the original source to verify the details.");
