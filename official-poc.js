@@ -893,7 +893,8 @@ function updatePreview(){
  $("studioText").disabled=d.status==="Published";
  $("hashtagsInput").disabled=d.status==="Published";
  $("sourceLinkToggle").disabled=d.status==="Published";
- $("aiGenerate").disabled=d.status==="Published"||generating||d.source.provider==="Drishti";
+ $("aiGenerate").disabled=d.status==="Published"||generating;
+  $("aiGenerate").textContent=d.source.provider==="Drishti"?"✦ AI draft from verified facts":"✦ Generate 2 AI versions";
  $("sourceVerified").disabled=d.status==="Published";
  $("disclosure").disabled=false;
  $("recordMessage").textContent=d.status==="Published"?"Published X URL saved in this browser.":"";
@@ -947,7 +948,7 @@ function renderStudio(){
  if(d.source.provider==="PIB RSS")
   $("evidenceBasis").textContent="AI input: PIB press-release headline and short summary only. Verify the original and attribute Press Information Bureau.";
  if(isMojoPOC(d))
-  $("evidenceBasis").textContent="Geojit editorial voice: only editor-supplied facts are used. MarketsMojo remains a source reference, never the author of the draft. No article was fetched by SignalDesk. Demo only.";
+  $("evidenceBasis").textContent=d.source.provider==="Drishti"?"Drishti provides news discovery metadata only. Verify the publisher source and supply your own factual notes to AI through Create from news. No Drishti trial text is sent to AI.":"Geojit editorial voice: only editor-supplied facts are used. MarketsMojo remains a source reference, never the author of the draft. No article was fetched by SignalDesk. Demo only.";
  const note=$("contextNotice");
  note.hidden=!(d.variant==="insight"&&d.contextStatus==="needs_source");
  note.textContent=d.contextStatus==="needs_source"?
@@ -975,7 +976,13 @@ function renderPublished(){
 async function generate(){
  const d=current();if(!d||generating||d.status==="Published")return;
   if(d.source.provider==="Drishti"||d.source.licensing==="internal_preview_only"){
-   notify("Drishti trial metadata cannot be sent to external AI. Verify the original publisher source and draft manually until content rights are approved.",true);return;
+   // Open independent source-backed composer; never copy Drishti summary or headline to AI.
+   navigate("discover");composerOpen(true);setComposerMode("link");
+   $("composeURL").value=d.source.url||"";
+   $("composeHeadline").value="";$("composeExcerpt").value="";
+   $("composeFallback").open=true;updateComposeLinkHelp();
+   composeNotice("Check the original publisher and enter independently verified facts. Drishti trial text will not be sent to AI.");
+   $("composeHeadline").focus();return;
   }
  if(!managerKey){$("aiSetupPanel").open=true;notify("AI not connected. Enter your manager key to generate AI versions.",true);$("managerKey").focus();return}
  if(aiConnectionState!=="connected"){
