@@ -18,6 +18,7 @@
 .thread-counter.over-limit{color:#ad4a27;font-weight:800}
 .thread-evidence{color:#806234;font-size:11px;line-height:1.6;margin-top:10px}
 .thread-preview{display:grid;gap:10px}
+.thread-preview[hidden],.thread-editor[hidden],#singleEditorControls[hidden],#studioText[hidden],#allTrialNote[hidden]{display:none!important}
 .thread-preview-card{border:1px solid #d9e5de;background:#fff;border-radius:10px;padding:12px}
 .thread-preview-card strong{font-size:10px;color:var(--green)}
 .thread-preview-card p{white-space:pre-wrap;font-size:12px;margin:8px 0 10px}
