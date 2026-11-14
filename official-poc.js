@@ -867,7 +867,7 @@ async function submitComposer(useAI){
   const id="custom:"+Date.now()+":"+Math.random().toString(36).slice(2,9);
   const timestamp=new Date().toISOString();
   const news=src.title;
-  workspace.drafts[id]={id,manual:true,source:{id,title:src.title,snippet:src.snippet,url:src.url,publisher:src.publisher,category:"User-submitted news",publishedAt:src.publishedAt,dateOnly:true,suggestedHashtags:[]},
+  workspace.drafts[id]={id,manual:true,storyStyle:validStoryStyle($("composeStoryStyle").value),source:{id,title:src.title,snippet:src.snippet,url:src.url,publisher:src.publisher,category:"User-submitted news",publishedAt:src.publishedAt,dateOnly:true,suggestedHashtags:[]},
    variants:{news,insight:""},variant:"news",status:"Draft",verified:false,sourceLink:false,publishedText:"",xUrl:"",risks:[],hashtags:[],suggestedHashtags:[],createdAt:timestamp,updatedAt:timestamp};
   selectedId=id;persist();composerOpen(false);navigate("studio");
   if(useAI){await generate()}
