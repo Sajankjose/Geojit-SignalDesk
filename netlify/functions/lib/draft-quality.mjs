@@ -23,7 +23,7 @@ export const unverifiedGeojitOpinion=text=>unverifiedInHouse.test(normalize(text
 
 // Prefer a complete first sentence to a cut-off tweet. Arbitrary .slice()
 // limits previously produced drafts ending mid-word, e.g. 'aid inves'.
-export function completePost(text,max=165){
+export function completePost(text,max=185){
  const src=normalize(text);
  if(!src)return "";
  if(src.length<=max&&/[.!?]$/.test(src))return src;
@@ -33,7 +33,7 @@ export function completePost(text,max=165){
 }
 function safeHeadline(text){
  const result=normalize(text).replace(/[.!?]$/,"").trim();
- return result.length&&result.length<=164?result+".":"";
+ return result.length&&result.length<=184?result+".":"";
 }
 function neutralTitle(evidence){
  let title=normalize(evidence?.title);
@@ -62,7 +62,7 @@ function factualFallback(evidence){
   const prefix=publisher+": ";
   if(neutral.toLowerCase().startsWith(publisher.toLowerCase()+" "))return neutral;
   const text=prefix+neutral;
-  return text.length<=165?text:neutral;
+  return text.length<=185?text:neutral;
  }
  return neutral;
 }
