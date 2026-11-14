@@ -881,12 +881,66 @@ function isMojoPOC(d){
   return host==="marketsmojo.com"||host==="www.marketsmojo.com";
  }catch{return false}
 }
+function threadParts(d){
+ if(!Array.isArray(d.threadPosts))d.threadPosts=["",""];
+ return d.threadPosts;
+}
+function threadTexts(d){
+ const posts=threadParts(d),total=posts.length,disclosure=(workspace.disclosure||"").trim();
+ const from=isMojoPOC(d)?"":"Source: "+d.source.publisher+(d.sourceLink&&validUrl(d.source.url)?" "+d.source.url:"");
+ const tags=(d.hashtags||[]).join(" ");
+ return posts.map((p,i)=>[i===0?disclosure:"",String(p||"").trim()+" ("+(i+1)+"/"+total+")",i===total-1?tags:"",i===total-1?from:""].filter(Boolean).join("\n\n"));
+}
+function renderThreadEditor(d){
+ const thread=d.format==="thread";
+ $("threadEditor").hidden=!thread;
+ $("singleEditorControls").hidden=thread;
+ $("studioText").hidden=thread;
+ $("threadPartInputs").replaceChildren();
+ if(!thread)return;
+ const posts=threadParts(d);
+ posts.forEach((value,i)=>{
+  const container=el("div","thread-part"),label=el("label","","Post "+(i+1)+" of "+posts.length),field=el("textarea");
+  field.rows=4;field.value=value;field.disabled=d.status==="Published";field.placeholder=i===0?"What happened? State the verified development.":i===1?"Add a second, distinct verified fact.":"Add further factual context, not a prediction.";
+  const count=el("span","thread-counter");
+  const sync=()=>{const len=threadTexts(d)[i].length;count.textContent=len+"/280 characters";count.classList.toggle("over-limit",len>280)};
+  field.addEventListener("input",()=>{d.threadPosts[i]=field.value;markEdited(d);sync();updatePreview()});
+  container.append(label,field,count);$("threadPartInputs").append(container);sync();
+ });
+ $("threadAddPart").disabled=posts.length>=3||d.status==="Published";
+ $("threadRemovePart").disabled=posts.length<=2||d.status==="Published";
+ $("threadEvidenceNote").textContent=d.threadEvidenceNote||"Threads require at least two distinct, source-supported facts. Never stretch one headline into unsupported implications.";
+}
+function renderThreadPreview(d){
+ const isThread=d.format==="thread",view=$("threadPreview");
+ view.hidden=!isThread;$("studioPreview").hidden=isThread;
+ $("threadCopyHint").hidden=!isThread;
+ view.replaceChildren();
+ if(!isThread)return;
+ const texts=threadTexts(d);
+ texts.forEach((text,i)=>{
+  const item=el("div","thread-preview-card"),title=el("strong","","POST "+(i+1)+" / "+texts.length),body=el("p","",text),button=el("button","outline","Copy post "+(i+1));
+  const allowed=!isMojoPOC(d)&&["Ready","Published"].includes(d.status)&&text.length<=280;
+  button.disabled=!allowed;
+  button.addEventListener("click",async()=>{
+   if(!allowed)return;
+   try{await navigator.clipboard.writeText(text);notify("Post "+(i+1)+" copied. Publish as "+(i===0?"the first post":"a reply to the previous post")+" on X.");}
+   catch{notify("Clipboard blocked. Select and copy the text manually.",true)}
+  });
+  item.append(title,body,button);view.append(item);
+ });
+}
 function reviewProblem(d,text){
  if(!d)return "No draft selected.";
  if(d.status==="Published")return "This post was already published.";
  if(!d.verified)return "Confirm that you reviewed the original source and checked the facts.";
  if(d.manual&&!validUrl(d.source.url))return "Add the original HTTPS source link before proceeding.";
- if(!String(d.variants?.[d.variant]||"").trim())return "Finish the selected draft before marking it ready.";
+ if(d.format==="thread"){
+  const posts=threadParts(d),texts=threadTexts(d);
+  if(posts.length<2||posts.length>3||posts.some(p=>!String(p).trim()))return "Complete all thread posts before marking Ready.";
+  if(texts.some(t=>t.length>280))return "One or more thread posts exceed 280 characters including numbering, disclosure and attribution.";
+  if(new Set(posts.map(p=>p.trim().toLowerCase())).size!==posts.length)return "Thread posts must contain distinct information.";
+ }else if(!String(d.variants?.[d.variant]||"").trim())return "Finish the selected draft before marking it ready.";
  if(text.length>280)return "The preview is "+text.length+" characters. Shorten it by "+(text.length-280)+" to fit the 280-character X limit.";
  return "";
 }
@@ -905,8 +959,9 @@ function buildText(d){
 }
 function updatePreview(){
  const d=current();if(!d)return;
- const demo=isMojoPOC(d),text=buildText(d),length=text.length,blocker=reviewProblem(d,text);
+ const demo=isMojoPOC(d),isThread=d.format==="thread",text=isThread?threadTexts(d).join("\n\n"):buildText(d),length=text.length,blocker=reviewProblem(d,text);
  $("studioPreview").textContent=text||"Start writing your post";
+ renderThreadPreview(d);
  $("studioCount").textContent=length+" / 280 characters";
  $("studioCount").classList.toggle("over-limit",length>280);
  // POC content may be internally reviewed but never sent to X from here.
@@ -930,6 +985,7 @@ function updatePreview(){
  $("reviewPublishingNote").textContent=demo?
   "Internal POC only — final publication, copying and X composer are unavailable. Keep original-source attribution in the Studio reference.":
   "The manager publishes manually. Nothing is sent to X automatically.";
+ $("copyFinal").hidden=isThread;
  $("copyFinal").disabled=demo||!["Ready","Published"].includes(d.status)||length>280;
  $("copyFinal").title=demo?"Copying POC content is disabled until reuse and publication permissions are confirmed.":"Copy the reviewed final post";
  $("recordPublished").disabled=demo||d.status!=="Ready";
@@ -939,7 +995,7 @@ function updatePreview(){
  $("hashtagsInput").disabled=d.status==="Published";
  $("sourceLinkToggle").disabled=d.status==="Published";
  $("aiGenerate").disabled=d.status==="Published"||generating;
-  $("aiGenerate").textContent=d.source.provider==="Drishti"?"✦ AI draft from verified facts":"✦ Generate 2 AI versions";
+  $("aiGenerate").textContent=d.source.provider==="Drishti"?"✦ AI draft from verified facts":isThread?"✦ Generate thread":"✦ Generate 2 AI versions";
  $("sourceVerified").disabled=d.status==="Published";
  $("disclosure").disabled=false;
  $("recordMessage").textContent=d.status==="Published"?"Published X URL saved in this browser.":"";
@@ -950,6 +1006,9 @@ function renderStudio(){
  if(!has)return;
  if(!current())selectedId=entries[0].id;
  const d=current();if(!d)return;
+ if(!d.format)d.format="single";
+ document.querySelectorAll("[data-post-format]").forEach(b=>b.classList.toggle("selected",b.dataset.postFormat===d.format));
+ renderThreadEditor(d);
  // One-time safety migration for previously generated POC posts that made the
  // news provider the narrative subject. They must be regenerated, not silently
  // transformed into an asserted Geojit research opinion.
@@ -1036,13 +1095,20 @@ async function generate(){
  }
  generating=true;$("aiGenerate").disabled=true;$("aiGenerate").textContent="Generating…";
  try{
-  const result=await fetch("/.netlify/functions/draft",{method:"POST",headers:{"Content-Type":"application/json","x-manager-key":managerKey},body:JSON.stringify({title:d.source.title,snippet:d.source.snippet,publisher:d.source.publisher,publishedAt:d.source.publishedAt,sourceUrl:d.source.url,userPasted:!!d.manual||isMojoPOC(d)})});
+  const isThread=d.format==="thread";
+   const result=await fetch(isThread?"/.netlify/functions/thread-draft":"/.netlify/functions/draft",{method:"POST",headers:{"Content-Type":"application/json","x-manager-key":managerKey},body:JSON.stringify({title:d.source.title,snippet:d.source.snippet||"",publisher:d.source.publisher,publishedAt:d.source.publishedAt,sourceUrl:d.source.url,userPasted:!!d.manual||isMojoPOC(d),provider:d.source.provider||"",licensing:d.source.licensing||""})});
   const body=await result.json();
   if(!result.ok){
    if(result.status===401){disconnectAI();setAIConnectionState("error","Netlify rejected the manager key. Connect again.");$("aiSetupPanel").open=true}
    throw Error(body.error||"AI drafting unavailable");
   }
-  if(typeof body.news!=="string"||!body.news.trim()||typeof body.insight!=="string")throw Error("Unexpected drafting response");
+  if(isThread){
+    if(!Array.isArray(body.posts)||body.posts.length<2)throw Error("Unexpected thread response");
+    d.threadPosts=body.posts.slice(0,3);d.threadEvidenceNote=body.needsEvidence?"More evidence needed: "+body.evidenceNote:"AI sequence is a draft. Verify every separate claim against its original source.";
+    d.risks=Array.isArray(body.risks)?body.risks.slice(0,10):[];
+    markEdited(d);notify("Connected thread generated. Edit each post, verify facts and approve before copying.");renderStudio();return;
+   }
+   if(typeof body.news!=="string"||!body.news.trim()||typeof body.insight!=="string")throw Error("Unexpected drafting response");
   d.variants={news:body.news,insight:body.insight};d.variant="news";
   d.risks=Array.isArray(body.risks)?body.risks.slice(0,10).map(String):[];
   d.contextStatus=body.contextStatus==="needs_source"?"needs_source":"supported";
@@ -1055,7 +1121,7 @@ async function generate(){
   $("aiSetupPanel").open=false;
   renderStudio();
  }catch(e){notify(String(e.message||e)+". Manual drafting remains available.",true)}
- finally{generating=false;$("aiGenerate").disabled=false;$("aiGenerate").textContent="✦ Generate 2 AI versions"}
+ finally{generating=false;$("aiGenerate").disabled=false;$("aiGenerate").textContent=d.source.provider==="Drishti"?"✦ AI draft from verified facts":d.format==="thread"?"✦ Generate thread":"✦ Generate 2 AI versions"}
 }
 function sourceURLAccepted(raw){
  try{const u=new URL(raw);return ["x.com","www.x.com","twitter.com","www.twitter.com"].includes(u.hostname)&&/^\/[a-zA-Z0-9_]+\/status\/\d+\/?$/.test(u.pathname)?u.href:null}catch{return null}
@@ -1160,7 +1226,7 @@ $("recordPublished").addEventListener("click",()=>{
  const d=current();if(!d||isMojoPOC(d)||d.status!=="Ready")return;
  const actual=sourceURLAccepted($("publishedUrl").value.trim());
  if(!actual){$("recordMessage").textContent="Enter a valid X post URL such as https://x.com/account/status/123456789";return}
- d.publishedText=buildText(d);d.xUrl=actual;d.status="Published";d.updatedAt=new Date().toISOString();
+ d.publishedText=d.format==="thread"?threadTexts(d).join("\n\n"):buildText(d);d.xUrl=actual;d.status="Published";d.updatedAt=new Date().toISOString();
  persist();renderStudio();renderPublished();notify("Manual publication recorded in this browser. This is not a compliance archive.");
 });
 $("saveManagerKey").addEventListener("click",async()=>{
@@ -1188,6 +1254,21 @@ $("studioAIRecheck").addEventListener("click",async()=>{
 $("studioAIDisconnect").addEventListener("click",()=>{
  disconnectAI();
  notify("AI disconnected from this browser tab. Your drafts are unaffected.");
+});
+document.querySelectorAll("[data-post-format]").forEach(b=>b.addEventListener("click",()=>{
+ const d=current();if(!d||d.status==="Published"||d.format===b.dataset.postFormat)return;
+ d.format=b.dataset.postFormat;
+ if(d.format==="thread"&&!Array.isArray(d.threadPosts))d.threadPosts=["",""];
+ markEdited(d);renderStudio();
+ notify(d.format==="thread"?"Thread mode enabled. Generate a short connected sequence or edit each part manually.":"Single Post mode enabled. Your thread text remains saved if you switch back.");
+}));
+$("threadAddPart").addEventListener("click",()=>{
+ const d=current();if(!d||d.status==="Published"||d.format!=="thread"||threadParts(d).length>=3)return;
+ d.threadPosts.push("");markEdited(d);renderStudio();
+});
+$("threadRemovePart").addEventListener("click",()=>{
+ const d=current();if(!d||d.status==="Published"||d.format!=="thread"||threadParts(d).length<=2)return;
+ d.threadPosts.pop();markEdited(d);renderStudio();
 });
 $("aiGenerate").addEventListener("click",generate);
 const initialView=location.hash.replace("#","");
