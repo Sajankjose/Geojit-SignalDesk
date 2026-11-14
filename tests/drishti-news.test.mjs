@@ -19,7 +19,7 @@ const validRecord={
  link:"https://example.com/financial-results",date:"2026-11-13T12:00:00Z",
  source:"Original publisher",company:"Example Ltd",symbol:"EXAMPLE",sentiment:"neutral"
 };
-test("Only dated safe, deduplicated news metadata is retained",()=>{
+test("Only safe, deduplicated news metadata is retained without fabricating dates",()=>{
  const list=normalizeNews([
   validRecord,{...validRecord,id:"other"},
   {...validRecord,link:"http://example.com/plaintext"},
@@ -28,12 +28,13 @@ test("Only dated safe, deduplicated news metadata is retained",()=>{
   {...validRecord,link:"https://example.com/old",date:"2025-01-01T00:00:00Z"},
   {...validRecord,link:"https://example.com/nodate",date:null}
  ],now);
- assert.equal(list.length,1);
+ assert.equal(list.length,2);
  assert.equal(list[0].provider,"Drishti");
  assert.equal(list[0].licensing,"internal_preview_only");
  assert.equal(list[0].publisher,"Original publisher");
  assert.equal(list[0].publishedAt,"2026-11-13T12:00:00.000Z");
  assert.ok(!("apiKey" in list[0]));
+ assert.equal(list[1].publishedAt,null,"Undated item is explicitly unknown, not invented");
 });
 test("Manager authentication and key configuration block unauthorised or unconfigured access",async()=>{
  const old=globalThis.fetch;
@@ -121,6 +122,7 @@ test("Drishti is manager-only, not silently merged into public or AI content",()
  assert.match(html,/No automatic AI drafting or X publishing from Drishti content/);
  assert.match(js,/source==="all"\?\[\.\.\.payload.stories,\.\.\.pibStories,\.\.\.mojoStories\]/);
  assert.match(js,/drishtiRequest\("news"\)/);
+ assert.match(js,/Publication time not supplied/);
  assert.match(js,/if\(!managerKey\)throw Error/);
  assert.match(js,/drishtiLoad"\)\.addEventListener\("click"/);
  assert.doesNotMatch(js,/DRISHTI_API_KEY/);
