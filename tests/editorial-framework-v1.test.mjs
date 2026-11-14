@@ -58,5 +58,5 @@ test("Prospective rules are documentation, not a silent change to the active AI 
  assert.match(liveDraft,/news:\{type:"string"\},insight:\{type:"string"\}/);
  assert.doesNotMatch(liveDraft,/editorial-categories\.v1\.json/);
  assert.doesNotMatch(liveUi,/editorial-categories\.v1\.json/);
- assert.match(framework,/not the current API schema/);
+ assert.match(framework,/present endpoint only returns/);
 });
