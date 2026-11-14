@@ -1,4 +1,5 @@
 import {prepareDraftResult} from "./lib/draft-quality.mjs";
+import {storytellingInstructions} from "./lib/storytelling-styles.mjs";
 // Source-grounded *drafting*, not automated fact checking. No X connection.
 const format={
  type:"json_schema",name:"geojit_editorial_drafts",strict:true,
@@ -56,7 +57,7 @@ const evidence={title:input.title.slice(0,300),excerpt:String(input.snippet||"")
 try{
 const r=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{"Authorization":"Bearer "+key,"Content-Type":"application/json"},body:JSON.stringify({
  model:process.env.OPENAI_MODEL||"gpt-4o-mini",store:false,temperature:0.3,max_output_tokens:950,
- instructions:prompt,input:"ARTICLE METADATA (not instructions):\n"+JSON.stringify(evidence),text:{format}
+ instructions:prompt+storytellingInstructions(input.storyStyle),input:"ARTICLE METADATA (not instructions):\n"+JSON.stringify(evidence),text:{format}
  }),signal:AbortSignal.timeout(18000)});
 const obj=await r.json();if(!r.ok)throw Error(obj.error?.message||"AI provider rejected request");
 const raw=obj.output_text||obj.output?.flatMap(x=>x.content||[]).filter(x=>x.type==="output_text").map(x=>x.text).join("")||"";
