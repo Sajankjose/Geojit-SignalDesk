@@ -85,6 +85,7 @@
           <section class="news-area" aria-label="News discovery">
             <div class="rank-controls">
               <div id="rankingTabs" class="rank-tabs" role="group" aria-label="Feed ordering">
+                <button type="button" data-rank="picks">Top Picks</button>
                 <button type="button" data-rank="top" class="selected">Top stories</button>
                 <button type="button" data-rank="latest">Latest</button>
                 <button type="button" data-rank="high">High priority</button>
@@ -92,6 +93,7 @@
               </div>
               <details class="ranking-help"><summary>How ranking works</summary><p>Editorial estimates from topic relevance, recency and routine-release signals. Not a fact check, financial recommendation or personalised feed.</p></details>
             </div>
+            <p id="allTrialNote" class="all-trial-note" hidden></p>
             <div class="filter-row">
               <div id="sourceTabs" class="tabs" role="group" aria-label="Select news source">
                 <button type="button" class="selected" data-source="all">All</button>
