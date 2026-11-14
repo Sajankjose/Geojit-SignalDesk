@@ -1,3 +1,7 @@
+.drishti-story-actions{display:flex;align-items:center;gap:13px;justify-content:space-between;flex-wrap:wrap;margin-top:auto;padding-top:12px}
+.drishti-create{background:#08796d;color:#fff;border:1px solid #08796d;border-radius:8px;padding:9px 13px;font-size:12px;font-weight:800}
+.drishti-create:hover{background:#005a51}
+.drishti-story-actions .drishti-original{margin:0}
 :root{--green:#09877b;--deep:#004c44;--ink:#14332d;--muted:#6c837c;--line:#e4ebe8;--paper:#f8faf9;--white:#fff;--orange:#ff7e4d;--mint:#eaf6f0}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
