@@ -1,7 +1,7 @@
 name: Free official news POC checks
 on:
   push:
-    branches: [editorial-framework-six-categories-v1, main]
+    branches: [drishti-sandbox-readonly, main]
   pull_request:
     branches: [main]
 permissions:
@@ -15,8 +15,8 @@ jobs:
         with:
           node-version: '22'
       - name: Validate official RSS and failure handling
-        run: node --test tests/official-poc.test.mjs tests/unified-workflow.test.mjs tests/minimal-ai.test.mjs tests/relevance-alerts.test.mjs tests/manual-composer.test.mjs tests/evidence-grounded-variants.test.mjs tests/compose-link-fix.test.mjs tests/marketsmojo-poc.test.mjs tests/pib-economy.test.mjs tests/geojit-voice.test.mjs tests/poc-review-ready.test.mjs tests/desktop-notifications.test.mjs tests/ai-multi-pc-connectivity.test.mjs tests/ai-connection-status.test.mjs tests/editorial-framework-v1.test.mjs
+        run: node --test tests/official-poc.test.mjs tests/unified-workflow.test.mjs tests/minimal-ai.test.mjs tests/relevance-alerts.test.mjs tests/manual-composer.test.mjs tests/evidence-grounded-variants.test.mjs tests/compose-link-fix.test.mjs tests/marketsmojo-poc.test.mjs tests/pib-economy.test.mjs tests/geojit-voice.test.mjs tests/poc-review-ready.test.mjs tests/desktop-notifications.test.mjs tests/ai-multi-pc-connectivity.test.mjs tests/ai-connection-status.test.mjs tests/editorial-framework-v1.test.mjs tests/drishti-news.test.mjs
       - name: Validate browser script syntax
         run: node --check official-poc.js
       - name: Validate serverless endpoint syntax
-        run: node --check netlify/functions/official-feed.mjs && node --check netlify/functions/ai-status.mjs && node --check netlify/functions/lib/editorial.mjs && node --check netlify/functions/news-preview.mjs && node --check netlify/functions/draft.mjs && node --check netlify/functions/lib/draft-quality.mjs && node --check netlify/functions/pib-economy.mjs
+        run: node --check netlify/functions/official-feed.mjs && node --check netlify/functions/ai-status.mjs && node --check netlify/functions/lib/editorial.mjs && node --check netlify/functions/news-preview.mjs && node --check netlify/functions/draft.mjs && node --check netlify/functions/lib/draft-quality.mjs && node --check netlify/functions/pib-economy.mjs && node --check netlify/functions/drishti-news.mjs

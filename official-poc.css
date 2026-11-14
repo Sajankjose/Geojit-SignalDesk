@@ -345,3 +345,29 @@ footer{margin-top:35px;border-top:1px solid var(--line);padding:18px 0;color:#99
 .ai-settings-actions button[hidden]{display:none!important}
 .compose-credentials summary small{font-weight:750;color:#477868}
 @media(max-width:600px){.ai-status-line{align-items:flex-start;flex-direction:column}.ai-status-line span{min-width:0}}
+
+
+/* Read-only provider evaluation stays separate from public Discover cards. */
+.drishti-tab{white-space:nowrap}
+.drishti-panel{background:#f5f9f7;border:1px solid #d9e6df;border-radius:13px;padding:18px;margin:0 0 15px}
+.drishti-panel[hidden],.drishti-meta[hidden],.drishti-studio-link[hidden]{display:none!important}
+.drishti-head{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.drishti-head h2{font-size:16px;color:#0a544a;margin:4px 0 5px}
+.drishti-head p{font-size:11px;line-height:1.6;color:#5d7770}
+.drishti-kicker{font-size:9px;letter-spacing:.9px;color:#067567;font-weight:850}
+.drishti-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.drishti-actions button{font-size:11px;padding:9px 13px;border-radius:8px;white-space:nowrap;font-weight:750}
+.drishti-actions button:disabled{opacity:.55;cursor:not-allowed}
+.drishti-status{margin:12px 0 7px;border-radius:7px;background:white;border:1px solid #e2ece7;color:#315c50;padding:11px 13px;font-size:11px;line-height:1.6}
+.drishti-status[data-error="true"]{border-color:#eecfa8;background:#fff8ec;color:#905c32}
+.drishti-meta{font-size:10px;color:#648076;margin:8px 0 12px}
+.drishti-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:9px;margin-top:14px}
+.drishti-list>p{grid-column:1/-1}
+.drishti-story{background:white;border:1px solid #dce9e1;border-radius:9px;padding:13px;display:flex;flex-direction:column;gap:8px}
+.drishti-story-meta{font-size:9px;color:#6c807b;display:flex;gap:8px;flex-wrap:wrap}
+.drishti-story strong{font-size:12px;color:#123b34;line-height:1.55}
+.drishti-story p{font-size:10px;line-height:1.55;color:#587067;flex:1}
+.drishti-original{font-size:10px;color:#007969;text-decoration:underline;text-underline-offset:3px;font-weight:750}
+.drishti-caution{font-size:10px;line-height:1.65;margin:12px 0;color:#8b6c4a}
+.drishti-studio-link{background:none;border:0;padding:3px 0;color:#046a5c;font-size:11px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+@media(max-width:760px){.drishti-head{align-items:stretch;flex-direction:column}.drishti-actions button{flex:1}}

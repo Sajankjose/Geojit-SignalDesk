@@ -439,10 +439,102 @@ async function loadPIB(){
   $("pibStatus").textContent="Could not retrieve PIB feed: "+String(e.message||e)+". You can still browse the official PIB website from the link below.";
  }finally{pibLoading=false;$("pibReload").disabled=false;$("pibReload").textContent="Refresh PIB"}
 }
+// Drishti internal licensed feed evaluation. Do not mix this provider's
+// raw metadata into the PUBLIC Discover cards or the OpenAI draft endpoint.
+let drishtiReady=false,drishtiLoading=false,drishtiLastChecked=0;
+function drishtiMessage(text,isError=false){
+ const node=$("drishtiStatus");node.textContent=text;
+ node.dataset.error=isError?"true":"false";
+}
+async function drishtiRequest(mode){
+ if(!managerKey)throw Error("Connect manager access in Studio first. Drishti API key stays only in Netlify.");
+ let response,data;
+ try{
+  response=await fetch("/.netlify/functions/drishti-news?mode="+mode,{
+   headers:{"x-manager-key":managerKey},cache:"no-store",
+   signal:AbortSignal.timeout(15000)
+  });
+ }catch(e){throw Error(e?.name==="TimeoutError"||e?.name==="AbortError"?
+  "Drishti connection timed out. Check Netlify network and try again.":
+  "Could not reach the SignalDesk Drishti function from this browser.")}
+ try{data=await response.json()}catch{throw Error("The Drishti function returned an unreadable response.")}
+ if(!response.ok)throw Error(data.error||"Drishti request failed (HTTP "+response.status+").");
+ return data;
+}
+function showDrishtiPanel(){
+ $("drishtiPanel").hidden=source!=="Drishti";
+ if(source==="Drishti"&&!managerKey){
+  drishtiReady=false;$("drishtiLoad").disabled=true;
+  $("drishtiStudioLink").hidden=false;
+  drishtiMessage("Manager connection required. Open Studio, connect with the SignalDesk manager key, then return here. The Drishti key is only stored in Netlify.");
+ }else if(source==="Drishti"){
+  $("drishtiStudioLink").hidden=true;
+ }
+}
+async function checkDrishtiAccess(){
+ if(drishtiLoading)return;
+ drishtiLoading=true;drishtiReady=false;
+ $("drishtiCheck").disabled=true;$("drishtiLoad").disabled=true;
+ drishtiMessage("Checking Drishti account and News access using the server-side API key…");
+ try{
+  const data=await drishtiRequest("status");
+  drishtiReady=data.keyValid===true&&data.newsEnabled===true;
+  if(!drishtiReady){
+   drishtiMessage("Drishti account connected, but News product access is not enabled for this key. Check the Drishti developer console.",true);
+  }else{
+   drishtiMessage("Drishti connection successful. News product enabled. Select Load news to check actual Indian-market coverage (1 credit when results are returned).");
+  }
+  $("drishtiMeta").hidden=false;
+  $("drishtiMeta").textContent="Account plan: "+(data.plan||"Unknown")+
+   (typeof data.credits==="number"?" · Credits: "+data.credits:"")+
+   " · Read-only manager trial";
+ }catch(e){
+  drishtiMessage("Connection check: "+String(e.message||e),true);
+ }finally{
+  drishtiLoading=false;$("drishtiCheck").disabled=false;
+  $("drishtiLoad").disabled=!drishtiReady;
+ }
+}
+function renderDrishtiTrial(rows){
+ const list=$("drishtiList");list.replaceChildren();
+ if(!rows.length){list.append(el("p","muted","No dated Drishti headlines were returned in the preview window. Try again later or check News coverage in the Drishti console."));return}
+ for(const story of rows){
+  const card=el("article","drishti-story");
+  const top=el("div","drishti-story-meta");
+  top.append(el("span","",story.publisher||"Original publisher not supplied"));
+  const dt=Date.parse(story.publishedAt);
+  if(Number.isFinite(dt))top.append(el("span","",new Date(dt).toLocaleString("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})));
+  else top.append(el("span","","Publication time not supplied"));
+  if(story.symbol)top.append(el("span","",story.symbol));
+  const title=el("strong","",story.title);
+  const summary=el("p","",story.summary||"Open the original source to verify the details.");
+  const link=el("a","drishti-original","View original source ↗");
+  link.href=story.originalUrl;link.target="_blank";link.rel="noopener noreferrer";
+  card.append(top,title,summary,link);list.append(card);
+ }
+}
+async function loadDrishtiTrial(){
+ if(drishtiLoading||!drishtiReady)return;
+ drishtiLoading=true;$("drishtiLoad").disabled=true;$("drishtiCheck").disabled=true;
+ drishtiMessage("Retrieving up to 20 recent market headlines from Drishti…");
+ try{
+  const data=await drishtiRequest("news");
+  if(!Array.isArray(data.articles))throw Error("Drishti news response was not recognised.");
+  renderDrishtiTrial(data.articles);
+  drishtiLastChecked=Date.now();
+  drishtiMessage("Loaded "+data.articles.length+" dated headlines. "+
+   (data.cached?"Recent server cache used; no new provider call.":"Provider queried; a successful non-empty page uses one credit.")+
+   " Review source freshness and relevance before choosing a subscription.");
+ }catch(e){
+  drishtiMessage("News loading failed: "+String(e.message||e),true);
+ }finally{
+  drishtiLoading=false;$("drishtiCheck").disabled=false;$("drishtiLoad").disabled=!drishtiReady;
+ }
+}
 function switchSource(next){
  source=next;
  document.querySelectorAll("button[data-source]").forEach(x=>x.classList.toggle("selected",x.dataset.source===source));
- showPIBPanel();showMojoPanel();renderStories();
+ showPIBPanel();showMojoPanel();showDrishtiPanel();renderStories();
  if(source==="PIB")loadPIB();
 }
 function renderHealth(){
@@ -465,6 +557,7 @@ function renderStories(){
  shown.sort((a,b)=>rankMode==="latest"?Date.parse(b.publishedAt)-Date.parse(a.publishedAt):priorityOf(b)-priorityOf(a)||Date.parse(b.publishedAt)-Date.parse(a.publishedAt));
  if(!shown.length){
   const msg=source==="PIB"?(pibStories.length?"No PIB economy/policy releases match these filters. Try 30 days or Latest.":"No PIB economy/policy stories loaded yet. See the status above and the official PIB website."):
+ source==="Drishti"?"Drishti headlines are shown in the manager-only panel above and are not added to public news cards or AI drafts.":
  source==="MarketsMojo"?(mojoStories.length?"No curated stories match these filters. Try Latest or 30 days.":"No MarketsMojo stories have been curated yet. Add a link, headline and verified facts above."):
  payload.stories.length?"No updates match these filters. Try 30 days or another source.":"No recent source-backed stories available. Check source health or retry.";
   list.append(el("div","empty",msg));return;
@@ -919,7 +1012,10 @@ $("clearAlerts").addEventListener("click",()=>{
  feedState.unread=[];saveFeedState();updateAlertUI();setAlertsOpen(false);renderStories();
 });
 document.addEventListener("click",e=>{if(alertsOpen&&!e.target.closest(".alert-anchor"))setAlertsOpen(false)});
-$("pibReload").addEventListener("click",()=>{pibLoadedAt=0;loadPIB()});
+$("drishtiCheck").addEventListener("click",checkDrishtiAccess);
+ $("drishtiLoad").addEventListener("click",loadDrishtiTrial);
+ $("drishtiStudioLink").addEventListener("click",()=>{navigate("studio");$("aiSetupPanel").open=true;});
+ $("pibReload").addEventListener("click",()=>{pibLoadedAt=0;loadPIB()});
  $("mojoOpenForm").addEventListener("click",()=>setMojoForm($("mojoForm").hidden));
 $("mojoCancel").addEventListener("click",()=>setMojoForm(false));
 $("mojoForm").addEventListener("submit",e=>{e.preventDefault();addMojoStory(false)});
