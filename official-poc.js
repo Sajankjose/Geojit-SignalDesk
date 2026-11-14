@@ -12,7 +12,7 @@ const feedStateKey="signaldesk:official-feed-tracking:v1";
 function loadFeedState(){
  try{const x=JSON.parse(localStorage.getItem(feedStateKey)||"{}");return {known:Array.isArray(x.known)?x.known:[],unread:Array.isArray(x.unread)?x.unread:[]}}catch{return {known:[],unread:[]}}
 }
-let feedState=loadFeedState(),alertsOpen=false;
+let feedState=loadFeedState(),alertsOpen=false,lastFeedCheckAt=null,inAppTestAt=0;
 // Browser alerts are opt-in and work only while SignalDesk is open.
 // No push service worker, continuous server-side monitor, or OS alerts after close.
 const desktopAlertPrefKey="signaldesk:desktop-alerts-enabled:v1";
@@ -40,7 +40,7 @@ function renderDesktopAlertControls(){
   return;
  }
  const permission=window.Notification.permission;
- test.hidden=!desktopAlertsActive();
+ test.hidden=false;
  toggle.disabled=false;
  if(desktopAlertsActive()){
   toggle.textContent="Turn off";
@@ -115,9 +115,14 @@ function notifyNewHighPriority(stories){
  const title=multiple?"Geojit SignalDesk · "+fresh.length+" new high-priority updates":
   "Geojit SignalDesk · "+primary.publisher+" update";
  const body=(multiple?primary.publisher+" · ":"")+primary.title;
- if(!showBrowserNotification(title,body,"signaldesk-official-"+primary.id))return;
- const next=[...shown,...fresh.map(s=>s.id)].slice(-300);
- try{localStorage.setItem(desktopAlertHistoryKey,JSON.stringify(next))}catch{}
+ const persistShown=()=>{
+  const next=[...new Set([...readDesktopNotificationHistory(),...fresh.map(s=>s.id)])].slice(-300);
+  try{localStorage.setItem(desktopAlertHistoryKey,JSON.stringify(next))}catch{}
+ };
+ showBrowserNotification(title,body,"signaldesk-official-"+primary.id,event=>{
+  if(event==="shown")persistShown();
+  if(event==="error")$("desktopAlertStatus").textContent="Chrome could not display an RBI/SEBI alert. Review notification permissions and Windows banners.";
+ });
 }
 function showDesktopTestToast(message){
  // Always give immediate, visible IN-PAGE feedback, separate from the native
@@ -133,9 +138,14 @@ function showDesktopTestToast(message){
 }
 let desktopTestToastTimeout=null,desktopTestSerial=0;
 function testDesktopAlert(){
+ // The in-app diagnostic must work even when browser/Windows notifications are blocked.
+ inAppTestAt=Date.now();
+ updateAlertUI();
  if(!desktopAlertsActive()){
   renderDesktopAlertControls();
-  showDesktopTestToast("Desktop alerts are not enabled in Chrome. Use Enable alerts in the bell menu.");
+  const reason=!desktopSupported()?"This browser does not support native notifications here.":window.Notification.permission==="denied"?"Chrome has blocked this site's notification permission.":"Choose Enable alerts to grant browser permission.";
+  $("desktopAlertStatus").textContent="In-app test passed. Desktop popup not sent: "+reason;
+  showDesktopTestToast("SignalDesk in-app notification test passed. "+reason);
   return;
  }
  // A unique tag avoids Chrome silently replacing an earlier test notification.
@@ -168,19 +178,47 @@ function readStory(id){
  feedState.unread=feedState.unread.filter(x=>x!==id);saveFeedState();updateAlertUI();renderStories();
 }
 function updateAlertUI(){
- const currentNews=payload.stories||[],ids=new Set(feedState.unread);
- const recent=currentNews.filter(x=>ids.has(x.id)&&important(x));
- const count=recent.length;
- $("alertCount").hidden=count===0;$("alertCount").textContent=count>9?"9+":String(count);
- $("unreadCount").hidden=ids.size===0;$("unreadCount").textContent=String(ids.size);
+ const official=Array.isArray(payload.stories)?payload.stories:[];
+ const unreadIds=new Set(feedState.unread);
+ const latest=official.filter(s=>important(s)&&Number.isFinite(Date.parse(s.publishedAt))
+   &&Date.parse(s.publishedAt)<=Date.now()+3600000
+   &&Date.now()-Date.parse(s.publishedAt)<=7*86400000)
+   .sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt));
+ const recentNew=latest.filter(s=>unreadIds.has(s.id));
+ $("alertCount").hidden=recentNew.length===0;
+ $("alertCount").textContent=recentNew.length>9?"9+":String(recentNew.length);
+ $("unreadCount").hidden=unreadIds.size===0;
+ $("unreadCount").textContent=String(unreadIds.size);
  const panel=$("alertsList");panel.replaceChildren();
- if(!count)panel.append(el("p","small-muted","You're caught up. New high-priority releases will appear here when detected."));
- else for(const story of recent.slice(0,8)){
-  const b=el("button","alert-story");b.type="button";
-  append(b,el("span","alert-source",story.publisher+" · "+priorityOf(story)+"/100"),el("strong","",story.title));
-  b.addEventListener("click",()=>{readStory(story.id);setAlertsOpen(false);startDraft(story)});
-  panel.append(b);
+ if(inAppTestAt&&Date.now()-inAppTestAt<5*60_000){
+  const test=el("div","alert-story alert-test");
+  test.append(el("span","alert-source","TEST · IN-APP"),el("strong","","Notification centre is working. This is a local test, not live market news."));
+  panel.append(test);
  }
+ const status=$("alertFeedStatus"),successful=(payload.sources||[]).filter(s=>s.ok).length;
+ status.textContent=!lastFeedCheckAt?"Checking official news feeds…":
+  (successful?"Last check: "+dateFmt(lastFeedCheckAt)+" · "+successful+" official feeds connected.":
+  "Latest check: official feeds unavailable. Use Refresh or try again.");
+ if(!recentNew.length&&!latest.length){
+  panel.append(el("p","small-muted","No high-priority RBI/SEBI stories in the last 7 days. Alerts will appear when qualifying updates are detected."));
+ }else{
+  if(recentNew.length)panel.append(el("strong","alert-section-title","New since your last check ("+recentNew.length+")"));
+  for(const story of recentNew.slice(0,7))addAlertStory(panel,story,true);
+  const highlights=latest.filter(s=>!unreadIds.has(s.id)).slice(0,6);
+  if(highlights.length){
+   panel.append(el("strong","alert-section-title",recentNew.length?"Other recent highlights":"Recent high-priority updates"));
+   for(const story of highlights)addAlertStory(panel,story,false);
+  }
+ }
+ $("clearAlerts").disabled=recentNew.length===0;
+ $("clearAlerts").textContent=recentNew.length?"Mark new alerts seen":"No new alerts to clear";
+}
+function addAlertStory(panel,story,isNew){
+ const button=el("button","alert-story");button.type="button";
+ button.append(el("span","alert-source",(isNew?"NEW · ":"")+story.publisher+" · "+priorityOf(story)+"/100"),
+  el("strong","",story.title));
+ button.addEventListener("click",()=>{readStory(story.id);setAlertsOpen(false);startDraft(story)});
+ panel.append(button);
 }
 function setAlertsOpen(open){
  alertsOpen=open;$("alertsPanel").hidden=!open;$("alertsButton").setAttribute("aria-expanded",String(open));
@@ -690,7 +728,7 @@ async function refresh(){
   payload=data;
   if(Array.isArray(data.stories)&&data.sources?.some(x=>x.ok))registerFeed(data.stories);
  }catch(e){payload={stories:[],sources:[],warnings:["Could not retrieve RSS: "+String(e.message||e)]}}
- finally{loading=false;$("refresh").disabled=false;$("refresh").textContent="↻ Refresh official feeds";renderFeeds()}
+ finally{lastFeedCheckAt=new Date().toISOString();loading=false;$("refresh").disabled=false;$("refresh").textContent="↻ Refresh official feeds";renderFeeds()}
 }
 function starter(s){
  const publisher=s.publisher==="RBI"?"Reserve Bank of India":s.publisher==="SEBI"?"Securities and Exchange Board of India":s.publisher==="PIB"?"Press Information Bureau":s.publisher;
@@ -1176,7 +1214,11 @@ $("desktopAlertToggle").addEventListener("click",toggleDesktopAlerts);
 $("desktopAlertTest").addEventListener("click",testDesktopAlert);
 $("alertsClose").addEventListener("click",()=>setAlertsOpen(false));
 $("clearAlerts").addEventListener("click",()=>{
- feedState.unread=[];saveFeedState();updateAlertUI();setAlertsOpen(false);renderStories();
+ feedState.unread=[];saveFeedState();updateAlertUI();renderStories();
+});
+$("alertCheckNow").addEventListener("click",async()=>{
+ const b=$("alertCheckNow");b.disabled=true;b.textContent="Checking…";
+ try{await refresh();updateAlertUI()}finally{b.disabled=false;b.textContent="Check now"}
 });
 document.addEventListener("click",e=>{if(alertsOpen&&!e.target.closest(".alert-anchor"))setAlertsOpen(false)});
 $("drishtiCheck").addEventListener("click",checkDrishtiAccess);
