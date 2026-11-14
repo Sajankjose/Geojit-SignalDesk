@@ -62,6 +62,19 @@
               <input id="composeReference" type="url" maxlength="1500" placeholder="https://publisher.com/story">
             </div>
           </div>
+          <details class="draft-extras compose-style-extra">
+            <summary>Optional: choose a storytelling style</summary>
+            <label for="composeStoryStyle">Storytelling style</label>
+            <select id="composeStoryStyle">
+              <option value="auto">✦ AI Recommended</option>
+              <option value="curiosity">Curiosity &amp; Intrigue</option>
+              <option value="insight">Investor Insight</option>
+              <option value="learn">Learn Something Useful</option>
+              <option value="bigger">The Bigger Picture</option>
+              <option value="balance">Two Sides of the Story</option>
+              <option value="straight">Straight News</option>
+            </select>
+          </details>
           <div id="composeAIStatus" class="ai-status-line" data-state="disconnected" role="status" aria-live="polite">
             <strong id="composeAIStatusLabel">AI not connected</strong>
             <span id="composeAIStatusDetail">Enter your manager key to enable AI drafting in this browser tab.</span>
