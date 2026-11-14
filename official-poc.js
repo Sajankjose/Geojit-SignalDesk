@@ -659,7 +659,8 @@ function renderStories(){
   const title=el("h3","card-title",s.title),summary=el("p","story-summary",s.snippet||"Open the original publisher source for details.");
   const meta=el("div","story-meta");
   append(meta,el("span","",s.curatedPOC?"Added to POC "+dateFmt(s.curatedAt||s.publishedAt):s.publishedAtEstimated?"Publication date not provided by PIB":dateFmt(s.publishedAt,false,s.dateOnly)));
-  const rationale=el("p","why-relevant",s.reason||"Relevance is a provisional editorial estimate; verify the primary source.");
+  const rationale=el("details","why-relevant-details"),explanation=el("p","why-relevant",s.reason||"Relevance is a provisional editorial estimate; verify the primary source.");
+  rationale.append(el("summary","","Why relevant?"),explanation);
   const actions=el("div","story-buttons"),link=el("a","outline","Source ↗"),btn=el("button","outline dark",existing?"Continue draft →":"Create post →");
   link.href=validUrl(s.url)||"#";link.target="_blank";link.rel="noopener noreferrer";
   btn.type="button";btn.addEventListener("click",()=>s.provider==="Drishti"?startDrishtiDraft({title:s.title,summary:s.snippet,originalUrl:s.url,publisher:s.publisher,publishedAt:s.publishedAt}):startDraft(s));
