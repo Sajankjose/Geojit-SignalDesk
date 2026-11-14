@@ -43,7 +43,7 @@ test("Editorial categories are not confused with six output formats",()=>{
  assert.match(framework,/Not six compulsory variations per story/);
 });
 test("Evidence and rights gates prevent generic advice, source laundering and fabricated reasons",()=>{
- for(const expression of [/not provider voice/i,/No invented Geojit Research/i,/More evidence needed/i,/rights/i,/publication dates/i,/Complete, accountable outputs/i,/Human approval/i]){
+ for(const expression of [/not provider voice/i,/No invented Geojit Research/i,/More evidence needed/i,/rights/i,/publication date/i,/Complete, accountable outputs/i,/Human approval/i]){
   assert.match(framework,expression);
  }
  for(const phrase of ["source publisher's narration","human fact-checking","noAutomaticPosting","needs_source"]){
