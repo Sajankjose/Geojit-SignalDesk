@@ -176,7 +176,7 @@
         </div>
       </section>
       <section id="studioView" class="view-screen" hidden>
-        <div class="page-lead studio-lead"><div><div class="eyebrow green">CREATE / REVIEW</div><h1>Craft your post</h1><p>Geojit voice: clear, factual and balanced. Describe the development, not the news provider’s opinion.</p></div>
+        <div class="page-lead studio-lead"><div><div class="eyebrow green">CREATE / REVIEW</div><h1>Craft your post</h1><p>Choose a style, generate, review the facts.</p></div>
           <button type="button" class="secondary" data-view="discover">← News</button>
         </div>
         <div id="studioEmpty" class="empty roomy">Select a story in Discover to create your first post. <button type="button" class="outline dark" data-view="discover">Browse news →</button></div>
@@ -185,7 +185,7 @@
           <div class="studio-grid">
             <div class="editor-area">
               <section class="panel source-reference">
-                <div class="section-overline">SOURCE</div><h3 id="studioStoryTitle"></h3>
+                <div class="section-overline">YOUR STORY</div><h3 id="studioStoryTitle"></h3>
                 <div id="studioSourceMeta" class="story-meta"></div>
                 <p id="studioDemoNotice" class="studio-demo-notice" hidden>Geojit editorial voice: report verified facts directly, without saying “MarketsMojo observed” or presenting source commentary as Geojit Research. The source stays available for verification above. Internal demonstration only: you can mark a checked draft <strong>Ready for review</strong>, but Copy post and all external publishing remain disabled until usage rights are cleared.</p>
                 <a id="studioSourceLink" target="_blank" rel="noopener noreferrer" class="source-link">Read original ↗</a>
@@ -193,14 +193,28 @@
               </section>
               <section class="panel editor-panel">
                 <div class="editor-section-head">
-                  <div><div class="section-overline">YOUR WORDS</div><h3>Draft</h3></div>
-                  <button type="button" class="ai-button" id="aiGenerate">✦ Generate 2 AI versions</button>
+                  <div><div class="section-overline">CREATE</div><h3>Shape the story</h3></div>
+                  
                 </div>
-                <div id="editorMessage" class="editor-hint" role="status" aria-live="polite">Edit manually or generate AI variants.</div>
+                <div id="editorMessage" class="editor-hint" role="status" aria-live="polite">Choose a format and style, then generate.</div>
                 <div class="post-format-control"><span>Post format</span><div class="tabs" role="group" aria-label="Post format">
                   <button type="button" data-post-format="single" class="selected">Single Post</button>
                   <button type="button" data-post-format="thread">Connected Thread · 2–3 posts</button>
                 </div></div>
+                <div class="story-style-control">
+                  <label for="storyStyleSelect">Storytelling style <span class="optional-text">· Optional</span></label>
+                  <select id="storyStyleSelect" aria-describedby="storyStyleHint">
+                    <option value="auto">✦ AI Recommended</option>
+                    <option value="curiosity">Curiosity &amp; Intrigue</option>
+                    <option value="insight">Investor Insight</option>
+                    <option value="learn">Learn Something Useful</option>
+                    <option value="bigger">The Bigger Picture</option>
+                    <option value="balance">Two Sides of the Story</option>
+                    <option value="straight">Straight News</option>
+                  </select>
+                  <p id="storyStyleHint">AI finds the most useful, factual angle.</p>
+                </div>
+                <button type="button" class="ai-button primary-generate" id="aiGenerate">✦ Generate draft</button>
                 <div id="threadEditor" class="thread-editor" hidden>
                   <div class="thread-editor-heading"><strong>Connected sequence</strong><span>Each part is editable · maximum 280 characters including numbering</span></div>
                   <div id="threadPartInputs"></div>
@@ -213,14 +227,14 @@
                   <button type="button" data-variant="insight">Why It Matters</button>
                 </div>
                 <p id="variantHint" class="variant-hint">A concise factual summary: who did what.</p>
-                <div class="evidence-strip" role="status"><span class="evidence-icon" aria-hidden="true">◷</span><span id="evidenceBasis">Source material not verified. Read the original.</span></div>
+                <details class="evidence-details"><summary>What evidence is AI using?</summary><div class="evidence-strip" role="status"><span class="evidence-icon" aria-hidden="true">◷</span><span id="evidenceBasis">Source material not verified. Read the original.</span></div></details>
                 <div id="contextNotice" class="context-notice" role="status" hidden></div>
                 <label class="field-label" for="studioText">Edit selected version</label>
                 <textarea id="studioText" rows="7" placeholder="Write a clear, accurate interpretation using only verified source information."></textarea>
-                </div><div class="hashtags-area"><label class="field-label" for="hashtagsInput">Hashtags <span class="optional-text">(up to 2, editable)</span></label>
+                </div><details class="draft-extras"><summary>Optional: hashtags &amp; refinements</summary><div class="hashtags-area"><label class="field-label" for="hashtagsInput">Hashtags <span class="optional-text">(up to 2, editable)</span></label>
                   <input id="hashtagsInput" type="text" maxlength="80" placeholder="#RBI #MonetaryPolicy">
                   <div id="hashtagSuggestions" class="hashtag-suggestions"></div>
-                </div>
+                </div></details>
                 <div class="editor-under"><span id="studioCount">0 / 280</span><span>Approximate X character count</span></div>
                 <div id="studioAIStatus" class="ai-status-line" data-state="disconnected" role="status" aria-live="polite">
                   <strong id="studioAIStatusLabel">AI not connected</strong>
@@ -232,12 +246,12 @@
                   <label for="managerKey">Manager access key</label><input type="password" id="managerKey" autocomplete="off" placeholder="Enter manager key only if not connected">
                   <div class="ai-settings-actions"><button type="button" class="outline" id="saveManagerKey">Connect AI</button><button type="button" class="outline" id="studioAIRecheck" hidden>Recheck connection</button><button type="button" class="outline" id="studioAIDisconnect" hidden>Disconnect</button></div>
                 </details>
-                <div id="draftRisks" class="risk-notice" hidden></div>
+                <details id="draftReviewNotes" class="draft-extras" hidden><summary id="draftReviewSummary">Source-check notes</summary><div id="draftRisks" class="risk-notice"></div></details>
               </section>
             </div>
             <div class="editor-rail">
               <section class="panel preview-panel">
-                <div class="section-overline">FINAL CHECK</div><h3>Post preview</h3>
+                <div class="section-overline">REVIEW</div><h3>Post preview</h3>
                 <div id="studioPreview" class="tweet-preview"></div>
                 <div id="threadPreview" class="thread-preview" hidden></div>
                 <p id="threadCopyHint" class="small-muted" hidden>After marking Ready, copy each post in order and publish the next as a reply to the previous one on X.</p>
