@@ -1,5 +1,8 @@
 # SignalDesk AI editorial rules — standalone news and supported context
 
+> **Framework update (proposal only):** The six editorial categories, evidence gates and future format mapping are formalised in [SignalDesk Editorial Framework v1](docs/SIGNALDESK_EDITORIAL_FRAMEWORK_V1.md) and its [machine-readable registry](config/editorial-categories.v1.json). These files are **not yet wired to the live AI endpoint or Studio**. The existing News Update / Why It Matters rules below remain the active production behaviour until a separately approved implementation.
+
+
 These guardrails apply to both RBI/SEBI feed stories and user-submitted news links/text in the shared `/.netlify/functions/draft` endpoint.
 
 ## Geojit-owned editorial voice — all news sources
