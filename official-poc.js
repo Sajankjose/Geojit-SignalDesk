@@ -549,7 +549,7 @@ function startDrishtiDraft(story){
 function renderDrishtiTrial(rows){
  const list=$("drishtiList");list.replaceChildren();
  if(!rows.length){list.append(el("p","muted","No dated Drishti headlines were returned in the preview window. Try again later or check News coverage in the Drishti console."));return}
- for(const story of rows){
+ for(const story of [...rows].sort((a,b)=>marketRelevance(b).score-marketRelevance(a).score||Date.parse(b.publishedAt)-Date.parse(a.publishedAt))){
   const card=el("article","drishti-story");
   const scored=marketRelevance(story);
   const score=el("span","score-label "+(scored.score>=75?"score-high":scored.score>=50?"score-mid":"score-low"),"Relevance · "+scored.score+"/100");
