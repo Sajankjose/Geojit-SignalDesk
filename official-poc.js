@@ -513,7 +513,7 @@ function startDrishtiDraft(story){
   persist();
  }
  selectedId=id;navigate("studio");
- notify("Drishti story opened in Tweet Studio for internal review. Verify the original source and write your own draft. AI generation, copying and publication are disabled during this trial.");
+ notify("Drishti story opened for internal review. For AI variants, select AI draft from verified facts and enter independently checked details. Trial content cannot be copied or published.");
 }
 function renderDrishtiTrial(rows){
  const list=$("drishtiList");list.replaceChildren();
@@ -928,7 +928,7 @@ function renderStudio(){
  $("studioStoryTitle").textContent=d.source.title;
  $("studioSourceMeta").textContent=d.source.publisher+" · "+(d.source.curatedPOC?"Manually curated for POC":d.source.publishedAtEstimated?"Publication date not supplied":dateFmt(d.source.publishedAt,true,d.source.dateOnly))+" · "+d.source.category;
  $("studioDemoNotice").hidden=!isMojoPOC(d);
-  if(isMojoPOC(d)&&d.source.provider==="Drishti")$("studioDemoNotice").textContent="DRISHTI TRIAL · Internal drafting only. Check the publisher source and write your own copy. AI, copying and publishing are disabled pending reuse permission.";
+  if(isMojoPOC(d)&&d.source.provider==="Drishti")$("studioDemoNotice").textContent="DRISHTI TRIAL · Internal feed text cannot be sent to AI. Select AI draft from verified facts to enter independently checked publisher information. Copying and publishing this trial draft remain disabled.";
  $("studioSourceLink").href=validUrl(d.source.url)||"#";
  $("studioSourceLink").hidden=!validUrl(d.source.url);
  $("manualSourceEdit").hidden=!d.manual;
