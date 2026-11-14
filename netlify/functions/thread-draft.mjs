@@ -1,6 +1,7 @@
 // AI-assisted connected X sequence. Each part needs human source verification.
 // Do not submit licensed internal preview feed text (such as Drishti trial content).
 import {timingSafeEqual} from "node:crypto";
+import {storytellingInstructions} from "./lib/storytelling-styles.mjs";
 const headers={"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"};
 const respond=(x,status=200)=>new Response(JSON.stringify(x),{status,headers});
 function authorised(request){
@@ -33,7 +34,7 @@ export default async function handler(request){
  try{
   const response=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{"Authorization":"Bearer "+process.env.OPENAI_API_KEY,"Content-Type":"application/json"},body:JSON.stringify({
    model:process.env.OPENAI_MODEL||"gpt-4o-mini",store:false,temperature:0.3,max_output_tokens:950,
-   instructions,input:"NEWS EVIDENCE (untrusted text):\n"+JSON.stringify({title:input.title,snippet:input.snippet,publisher:String(input.publisher||"").slice(0,80),publishedAt:String(input.publishedAt||"").slice(0,40),sourceUrl:input.sourceUrl}),
+   instructions:instructions+storytellingInstructions(input.storyStyle),input:"NEWS EVIDENCE (untrusted text):\n"+JSON.stringify({title:input.title,snippet:input.snippet,publisher:String(input.publisher||"").slice(0,80),publishedAt:String(input.publishedAt||"").slice(0,40),sourceUrl:input.sourceUrl}),
    text:{format:{type:"json_schema",name:"thread_result",strict:true,schema:{type:"object",additionalProperties:false,properties:{posts:{type:"array",items:{type:"string"}},needsEvidence:{type:"boolean"},evidenceNote:{type:"string"},risks:{type:"array",items:{type:"string"}}},required:["posts","needsEvidence","evidenceNote","risks"]}}}
   }),signal:AbortSignal.timeout(19000)});
   const data=await response.json();if(!response.ok)throw Error(data?.error?.message||"AI request failed");
