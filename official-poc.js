@@ -311,6 +311,17 @@ const dateFmt=(v,withYear=false,dateOnly=false)=>{
 $("clock").textContent=new Date().toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata",weekday:"short",day:"numeric",month:"short",year:"numeric"});
 const allDrafts=()=>Object.values(workspace.drafts).sort((a,b)=>(b.updatedAt||"").localeCompare(a.updatedAt||""));
 const current=()=>selectedId?workspace.drafts[selectedId]||null:null;
+const STORY_STYLE_COPY={
+ auto:"AI selects the best supported angle; no forced curiosity.",
+ curiosity:"A verifiable tension or question, answered with evidence.",
+ insight:"Explain a concrete factor relevant to investors.",
+ learn:"Make one financial concept clear and useful.",
+ bigger:"Add only source-supported sector or economic context.",
+ balance:"Show a genuine, supported trade-off or contrast.",
+ straight:"Tell the news clearly, without forced suspense."
+};
+function validStoryStyle(value){return Object.prototype.hasOwnProperty.call(STORY_STYLE_COPY,value)?value:"auto";}
+
 function updateNavCounts(){
  $("draftNavCount").textContent=allDrafts().filter(d=>d.status!=="Published").length;
  $("publishedNavCount").textContent=allDrafts().filter(d=>d.status==="Published").length;
@@ -1008,6 +1019,10 @@ function renderStudio(){
  if(!current())selectedId=entries[0].id;
  const d=current();if(!d)return;
  if(!d.format)d.format="single";
+ d.storyStyle=validStoryStyle(d.storyStyle);
+ $("storyStyleSelect").value=d.storyStyle;
+ $("storyStyleSelect").disabled=d.status==="Published";
+ $("storyStyleHint").textContent=STORY_STYLE_COPY[d.storyStyle];
  document.querySelectorAll("[data-post-format]").forEach(b=>b.classList.toggle("selected",b.dataset.postFormat===d.format));
  renderThreadEditor(d);
  // One-time safety migration for previously generated POC posts that made the
@@ -1061,7 +1076,10 @@ function renderStudio(){
  $("hashtagsInput").value=(d.hashtags||defaultTags(d.source)).join(" ");renderHashtagSuggestions(d);
  $("sourceLinkToggle").checked=!!d.sourceLink;
  $("disclosure").value=workspace.disclosure||"";
- const risks=$("draftRisks");risks.hidden=!d.risks?.length;risks.textContent=d.risks?.length?"AI draft review notes: "+d.risks.join(" · "):"";
+ const risks=$("draftRisks"),notes=$("draftReviewNotes");
+ notes.hidden=!d.risks?.length;
+ $("draftReviewSummary").textContent=d.risks?.length?"Source-check notes ("+d.risks.length+")":"Source-check notes";
+ risks.textContent=d.risks?.length?d.risks.join(" · "):"";
  updatePreview();
 }
 function renderPublished(){
@@ -1097,7 +1115,7 @@ async function generate(){
  generating=true;$("aiGenerate").disabled=true;$("aiGenerate").textContent="Generating…";
  try{
   const isThread=d.format==="thread";
-   const result=await fetch(isThread?"/.netlify/functions/thread-draft":"/.netlify/functions/draft",{method:"POST",headers:{"Content-Type":"application/json","x-manager-key":managerKey},body:JSON.stringify({title:d.source.title,snippet:d.source.snippet||"",publisher:d.source.publisher,publishedAt:d.source.publishedAt,sourceUrl:d.source.url,userPasted:!!d.manual||isMojoPOC(d),provider:d.source.provider||"",licensing:d.source.licensing||""})});
+   const result=await fetch(isThread?"/.netlify/functions/thread-draft":"/.netlify/functions/draft",{method:"POST",headers:{"Content-Type":"application/json","x-manager-key":managerKey},body:JSON.stringify({title:d.source.title,snippet:d.source.snippet||"",publisher:d.source.publisher,publishedAt:d.source.publishedAt,sourceUrl:d.source.url,userPasted:!!d.manual||isMojoPOC(d),provider:d.source.provider||"",licensing:d.source.licensing||"",storyStyle:validStoryStyle(d.storyStyle)})});
   const body=await result.json();
   if(!result.ok){
    if(result.status===401){disconnectAI();setAIConnectionState("error","Netlify rejected the manager key. Connect again.");$("aiSetupPanel").open=true}
@@ -1255,6 +1273,14 @@ $("studioAIRecheck").addEventListener("click",async()=>{
 $("studioAIDisconnect").addEventListener("click",()=>{
  disconnectAI();
  notify("AI disconnected from this browser tab. Your drafts are unaffected.");
+});
+$("storyStyleSelect").addEventListener("change",e=>{
+ const d=current();if(!d||d.status==="Published")return;
+ d.storyStyle=validStoryStyle(e.target.value);
+ markEdited(d);
+ $("storyStyleHint").textContent=STORY_STYLE_COPY[d.storyStyle];
+ updatePreview();
+ notify(d.storyStyle==="auto"?"AI will recommend the best supported storytelling style.":"Style selected: "+$("storyStyleSelect").selectedOptions[0].text+". Generate again to apply it.");
 });
 document.querySelectorAll("[data-post-format]").forEach(b=>b.addEventListener("click",()=>{
  const d=current();if(!d||d.status==="Published"||d.format===b.dataset.postFormat)return;
